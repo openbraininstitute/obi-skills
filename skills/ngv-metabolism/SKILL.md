@@ -1,6 +1,6 @@
 ---
 name: ngv-metabolism
-description: Run and interpret the NGV (neuron-glia-vasculature) unit metabolism model in the OBI sandbox. A 151-ODE biophysical model of one neuron plus astrocyte, ECS, and capillary, with young/aged phenotypes and synaptic, current-injection, or noradrenergic stimuli (Shichkova et al. 2025, aging brain metabolism). Use whenever the user asks to simulate brain energy metabolism, ATP/lactate/glucose dynamics, the astrocyte-neuron lactate shuttle, NAD or Na/K-ATPase changes, aging effects on metabolism, or to compare young vs aged metabolic responses to stimulation. The model code lives in the sandbox at /shared_data/ngv-unit; this skill drives it headlessly via execute-python and returns plots. Not an obi-one endpoint and not a pip package.
+description: Run and interpret the NGV (neuron-glia-vasculature) unit metabolism model in the OBI sandbox. A 151-ODE biophysical model of one neuron plus astrocyte, ECS, and capillary, with young/aged phenotypes and synaptic, current-injection, or noradrenergic stimuli (Shichkova et al. 2025, aging brain metabolism). Use whenever the user asks to simulate brain energy metabolism, ATP/lactate/glucose dynamics, the astrocyte-neuron lactate shuttle, NAD or Na/K-ATPase changes, aging effects on metabolism, or to compare young vs aged metabolic responses to stimulation. The model code lives in the sandbox at /home/jovyan/shared_data/ngv-unit; this skill drives it headlessly via execute-python and returns plots. Not an obi-one endpoint and not a pip package.
 ---
 
 # NGV Unit Metabolism Model
@@ -25,12 +25,12 @@ Solver: SciPy BDF. Parity vs the original Julia model is close but not bit-ident
 
 ## Model location and how to run it
 
-Code is on the sandbox at **`/shared_data/ngv-unit`** (see the companion "what to put under ngv-unit" note). Put that on the path, then call `run_metabolism`. Do not modify files there — treat it as read-only model code; write all outputs to your topic directory.
+Code is on the sandbox at **`/home/jovyan/shared_data/ngv-unit`** (see the companion "what to put under ngv-unit" note). Put that on the path, then call `run_metabolism`. Do not modify files there — treat it as read-only model code; write all outputs to your topic directory.
 
 ```python
 # {obi}:execute-python
 import sys
-sys.path.insert(0, "/shared_data/ngv-unit")
+sys.path.insert(0, "/home/jovyan/shared_data/ngv-unit")
 from ngv_runner import run_metabolism, STATE_INDEX  # STATE_INDEX: name -> 0-based column
 
 topic = "/home/jovyan/ngv-metabolism-demo"   # your topic dir, per [[obi-logbook]]
@@ -51,7 +51,7 @@ res = run_metabolism(phenotype="young", stimulus="mainSyn", outdir=f"{topic}/res
 | `custom_preset` | `None` | `"1_blood_glc_ini"` (set blood glucose) or `"2_blood_lac_ini"` (set blood lactate). |
 | `glc_mod` / `lac_mod` | `7.6` / `2.0` | Values for the custom presets above. |
 | `param_overrides` | `None` | **The flexibility knob.** `{param_name: value}` applied to the model namespace after phenotype/preset setup, so it wins. Use for arbitrary perturbations (drug/disease edits). |
-| `outdir` | required | Writable dir for CSVs — a path under your topic dir, never `/shared_data/ngv-unit`. |
+| `outdir` | required | Writable dir for CSVs — a path under your topic dir, never `/home/jovyan/shared_data/ngv-unit`. |
 
 ### Reading results by biological name
 
@@ -151,7 +151,7 @@ Per [[obi-links]], give the user each plot as a JupyterLab link (and bridge/pres
 
 ## Guardrails
 
-- **Never write into `/shared_data/ngv-unit`** — it's model code. All outputs go under the topic dir.
+- **Never write into `/home/jovyan/shared_data/ngv-unit`** — it's model code. All outputs go under the topic dir.
 - **Non-negativity warning:** aggressive `param_overrides` can drive concentration-like states negative; `run_metabolism` surfaces a warning when that happens. Report it — the run may be unphysical past that point rather than a real biological result.
 - **Execution time:** default runs (~300 s sim, `dt=1.0`) are quick. Long `t_end` or tiny `dt` can approach the sandbox execution cap — keep `dt=1.0` unless spike resolution is explicitly needed.
 - **Parity honesty:** describe results as exploratory; the port matches Julia closely but not exactly, most notably `VNeu` near the stimulus.

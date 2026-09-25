@@ -80,7 +80,7 @@ curl -s -w '\nHTTP %{http_code}\n' \
 ```
 Returns `HTTP 200` with a `consent_url`, `session_state_id`, and a message asking the user to visit the URL.
 
-**Step 3b — Show the user the consent URL.** This is required — do not skip or try to complete consent on the user's behalf. Present it as an actual clickable link (not truncated, not raw with unescaped spaces — encode the `scope` param's spaces as `%20` before rendering it). Explain in one line what it's for: authorizing offline access so the simulation can keep running without the user staying logged in. Then wait for the user to confirm they've completed it before continuing — do not poll or guess.
+**Step 3b — Show the user the consent URL.** This is required — do not skip or try to complete consent on the user's behalf. Present it as an actual clickable link (not truncated, not raw with unescaped spaces — encode the `scope` param's spaces as `%20` before rendering it). Explain in one line what it's for: authorizing offline access so the simulation can keep running without the user staying logged in. **Tell the user to open the consent URL in their operating system's default browser** — the one already signed in to their OBI/SSO session — rather than an incognito window or a different browser, so the consent completes against the active session. Then wait for the user to confirm they've completed it before continuing — do not poll or guess.
 
 **Step 3c — Confirm the offline token was persisted:**
 ```bash
