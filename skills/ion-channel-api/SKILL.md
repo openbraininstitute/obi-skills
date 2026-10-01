@@ -148,9 +148,27 @@ Returns the **campaign ID** (IonChannelModelingCampaign entity):
 "<campaign-uuid>"
 ```
 
-### Note on Launching
+### Run the fitting task
 
-Ion channel fitting uses **legacy entity types** (IonChannelModelingCampaign, IonChannelModelingConfig) rather than the generic task-config system. The fitting task is **not** in the `/declared/task/launch` mappings — it is executed as part of the grid scan generation itself (i.e., `execute_single_config_task=False` in the endpoint config, meaning it runs inline during generation, not as a separate launched job).
+Ion channel fitting uses **legacy entity types** (IonChannelModelingCampaign, IonChannelModelingConfig) rather than the generic task-config system. The REST generate endpoint creates the campaign and child configs **without running the fit** (`execute_single_config_task=False`). Ion channel fitting is not in the `/declared/task/launch` mappings, so the REST flow alone does not produce an IonChannelModel.
+
+To fit a model, run the scan **in-process** with `obi_one` in an environment that has the ion-channel-builder dependency and an authenticated EntitySDK client. Use this in place of the REST generate call; running both would create two campaigns:
+
+```python
+import obi_one as obi
+
+# form: a validated IonChannelFittingScanConfig using the fields above
+# db_client: authenticated entitysdk.Client for the target project
+grid_scan = obi.GridScanGenerationTask(
+    form=form,
+    coordinate_directory_option="ZERO_INDEX",
+    output_root="/home/jovyan/<topic>/results/ion-channel-fitting",
+)
+grid_scan.execute(db_client=db_client)  # registers campaign and child configs
+model_ids = obi.run_tasks_for_generated_scan(grid_scan, db_client=db_client)
+```
+
+The fit runs for each child config and registers its IonChannelModel. Check `model_ids` and the registered entities before reporting success.
 
 ### Output: IonChannelModel Entity
 
@@ -324,8 +342,8 @@ GET /api/obi-one/declared/task/<job-id>/stream
 | Entity types | Legacy (dedicated models) | Legacy (Simulation) | Generic (task-config) |
 | Campaign entity | `IonChannelModelingCampaign` | `SimulationCampaign` | `task-config` (type: `skeletonization__campaign`) |
 | Child config | `IonChannelModelingConfig` | `Simulation` | `task-config` (type: `skeletonization__config`) |
-| Launch via | Not launched (runs inline) | `/declared/task/launch` with `ion_channel_model_simulation_execution` | `/declared/task/launch` with `morphology_skeletonization` |
-| Config ID for launch | N/A | Simulation entity ID | task-config child ID |
+| Launch via | `run_tasks_for_generated_scan` in-process; REST generation alone does not fit | `/declared/task/launch` with `ion_channel_model_simulation_execution` | `/declared/task/launch` with `morphology_skeletonization` |
+| Config ID for launch | No REST launch path | Simulation entity ID | task-config child ID |
 
 ## Ion Channel Model Fields (EntityCore)
 

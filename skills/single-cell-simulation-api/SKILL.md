@@ -178,7 +178,7 @@ GET /api/entitycore/electrical-cell-recording?project_id=<project-id>
       }
     ]
   },
-  "protocol_and_feature_selection": { ... },
+  "efeatures_by_protocol": { ... },
   "settings": { ... }
 }
 ```
