@@ -1,6 +1,6 @@
 ---
 name: obi-circuit-simulation
-description: Client-agnostic technical reference for the OBI/BBP (Open Brain Institute / Blue Brain Project) circuit and simulation stack — what a SONATA circuit is, how to find/download one from EntityCore, how to modify and register a circuit, how to configure and run a simulation via the obi-one API, and what simulation outputs look like. Invoke whenever a task touches circuit download, circuit modification, circuit registration to EntityCore, or configuring/running/polling an obi-one simulation — regardless of the scientific question behind it or which client/agent surface is in use. This is platform mechanics, not scientific workflow guidance; for disease-modeling process see [[disease-modeling]].
+description: Client-agnostic technical reference for the OBI/BBP (Open Brain Institute / Blue Brain Project) circuit and simulation stack — what a SONATA circuit is, how to find/stage/download one from EntityCore (prefer staging/symlinking over downloading, especially for large entities like circuits), how to modify and register a circuit, how to configure and run a simulation via the obi-one API, and what simulation outputs look like. Invoke whenever a task touches circuit acquisition (staging or download), circuit modification, circuit registration to EntityCore, or configuring/running/polling an obi-one simulation — regardless of the scientific question behind it or which client/agent surface is in use. This is platform mechanics, not scientific workflow guidance; for disease-modeling process see [[disease-modeling]].
 license: Apache-2.0
 ---
 
@@ -98,7 +98,7 @@ Confirmed from `entitycore`'s `app/db/model.py` (relationships) and `app/db/type
 
 | Entity | Kind | Notes |
 |---|---|---|
-| `Circuit` | Entity | `root_circuit_id → Circuit` (self-referential, for derived/modified circuits — set this when registering a modified version of an existing one); `atlas_id → BrainAtlas`; fields: `build_category`, `scale`, `has_morphologies`/`has_point_neurons`/`has_electrical_cell_models`/`has_spines` (bools), `number_neurons`, `number_synapses`, `number_connections`. Real assets (verified on a live circuit): `circuit.gz` (**download this one**, single archive), `sonata_circuit` (directory asset — **never download directly**, unbounded S3 prefix, will time out), plus visualization extras (`main.png`, `circuit_visualization.webp`, `network_stats_*.webp`, `node_stats.webp`, `circuit_connectivity_matrices` (directory)). No FK to `MEModel` (see above) — a circuit's per-neuron biophysics lives only in its SONATA files. |
+| `Circuit` | Entity | `root_circuit_id → Circuit` (self-referential, for derived/modified circuits — set this when registering a modified version of an existing one); `atlas_id → BrainAtlas`; fields: `build_category`, `scale`, `has_morphologies`/`has_point_neurons`/`has_electrical_cell_models`/`has_spines` (bools), `number_neurons`, `number_synapses`, `number_connections`. Real assets (verified on a live circuit): `circuit.gz` (single archive — the **download fallback**), `sonata_circuit` (directory asset — **stage this with `stage_circuit`, never download directly**: over raw HTTP it's an unbounded S3 prefix that times out, but staging resolves it as symlinks from the mounted store at any size), plus visualization extras (`main.png`, `circuit_visualization.webp`, `network_stats_*.webp`, `node_stats.webp`, `circuit_connectivity_matrices` (directory)). No FK to `MEModel` (see above) — a circuit's per-neuron biophysics lives only in its SONATA files. |
 | `SimulationCampaign` | Entity | overall campaign spec/config asset |
 | `SimulationGeneration` | Activity (not Entity) | provenance: "the config-generation process ran" |
 | `Simulation` | Entity | one grid point's SONATA simulation config; `simulation_campaign_id → SimulationCampaign`; carries `scan_parameters` (JSON, e.g. which amplitude this one is) |
@@ -110,7 +110,9 @@ Confirmed from `entitycore`'s `app/db/model.py` (relationships) and `app/db/type
 
 ---
 
-## Finding and downloading a circuit from EntityCore
+## Finding and acquiring a circuit from EntityCore
+
+> **Stage, don't download — especially for large entities.** When a `LocalAssetStore` is available (always the case in the OBI sandbox, where the entitycore S3 bucket is mounted at `/data`), **prefer `entitysdk`'s `stage_circuit` over downloading `circuit.gz`.** Staging fetches the `sonata_circuit` directory with strategy `link_or_download`: it checks the local mount first and **symlinks** the already-present files instead of transferring any bytes. For a circuit this is the difference between an instant filesystem `symlink` and copying/transferring gigabytes — the cost of staging is independent of circuit size, so the larger the entity, the more decisive the win. Download `circuit.gz` only as a fallback when **no** local store is mounted (e.g. a local script with network-only access). The same rule applies to every large directory-backed entity (circuits, staged simulations, SONATA-from-ME-model) — reach for the matching `stage_*` helper before any `download_*`/`requests.get(.../download)` path. See [Staging a circuit](#staging-a-circuit-preferred) below and the "Decision rule — stage over download" note in the `entitysdk` section further down.
 
 ### List/filter circuits
 
@@ -146,9 +148,47 @@ for c in circuits:
         print(f"{c['name']}  neurons={c.get('number_neurons')}  circuit_id={c['id']}  asset_id={gz['id']}")
 ```
 
-### Download `circuit.gz` — never the raw directory
+### Staging a circuit (preferred)
 
-**Always download the `circuit.gz` asset — never the `sonata_circuit` directory asset.** The directory is an unbounded S3 prefix that will time out; `circuit.gz` is a single archived file. The download endpoint returns a 307 redirect to a signed S3 URL — follow it (most HTTP clients do this by default with `allow_redirects=True`).
+This is the default way to materialise a circuit on the OBI sandbox. `stage_circuit` resolves the `sonata_circuit` directory asset and writes a ready-to-use circuit tree (returning the `circuit_config.json` path) **without downloading** when a `LocalAssetStore` is configured — it symlinks each file from the mounted `/data` bucket. That sidesteps the exact problem that makes the raw directory asset unusable over HTTP (an unbounded S3 prefix that times out): staging never enumerates it over the network, it stats and links the local mount. Cost is independent of circuit size.
+
+```python
+import os
+from pathlib import Path
+import entitysdk
+from entitysdk.client import Client
+from entitysdk.token_manager import TokenFromEnv
+from entitysdk.common import ProjectContext
+from entitysdk import models
+from entitysdk.staging import stage_circuit
+
+client = Client(
+    token_manager=TokenFromEnv("OBI_ACCESS_TOKEN"),
+    project_context=ProjectContext(
+        virtual_lab_id=os.environ["OBI_VLAB_ID"],
+        project_id=os.environ["OBI_PROJECT_ID"],
+    ),
+    environment=os.environ.get("OBI_ENVIRONMENT", "staging"),
+    # The mounted entitycore bucket — this is what turns staging into a symlink
+    # instead of a download. Without it, stage_circuit still works but falls back
+    # to a real download (strategy link_or_download).
+    local_store=entitysdk.LocalAssetStore(prefix="/data"),
+)
+
+circuit = client.get_entity(entity_id="<CIRCUIT_ID>", entity_type=models.Circuit)
+circuit_config_path = stage_circuit(
+    client,
+    model=circuit,
+    output_dir=Path("<LOCAL_DIR>/circuit"),
+)
+# circuit_config_path -> <LOCAL_DIR>/circuit/circuit_config.json, ready for bluecellulab / Neurodamus.
+```
+
+Inspect the staged tree before assuming file layout — it varies by circuit. For single-neuron circuits, the key file is typically a `.hoc` biophysical model under `components/biophysical_neuron_models/`. Because staged files may be symlinks into the read-only mount, **copy any file you intend to edit** before modifying it (see "Modifying a circuit" below).
+
+### Download `circuit.gz` — fallback when no local store is mounted
+
+Use this only when staging is not available (e.g. a local script with network-only access and no mounted `/data` bucket). **If you do download, always take the `circuit.gz` asset — never the `sonata_circuit` directory asset.** The directory is an unbounded S3 prefix that will time out; `circuit.gz` is a single archived file. The download endpoint returns a 307 redirect to a signed S3 URL — follow it (most HTTP clients do this by default with `allow_redirects=True`).
 
 ```python
 circuit_id = "<CIRCUIT_ID>"
@@ -173,7 +213,7 @@ Then extract with `tar -xzf circuit.gz -C <dest>/` and inspect the extracted tre
 
 There's no dedicated "circuit editing" API — modifications are direct file edits on the extracted circuit tree, done as ordinary code (no obi-one endpoint for this). General pattern:
 
-1. Copy the extracted circuit directory (don't mutate the original — keep it for the control/baseline condition).
+1. Copy the extracted/staged circuit directory (don't mutate the original — keep it for the control/baseline condition). **If the circuit was staged, its files are symlinks into the read-only `/data` mount** — copy with `shutil.copytree(..., symlinks=False)` (resolve the links to real files) so your edits don't fail with a read-only error or try to write back into the shared store.
 2. Locate the target file (e.g. a specific `.hoc` biophysical model file — for multi-cell circuits, be careful to target the right cell type, not e.g. an interneuron file when you meant the pyramidal cell).
 3. Apply a targeted, auditable change (e.g. a string replacement of a named conductance value) — assert the expected original value is present before replacing, so a silent no-op can't happen.
 4. Record what changed in a small sidecar file (e.g. `modifications.json`) alongside the modified circuit: parameter name, original value, new value, factor, rationale.
@@ -236,6 +276,8 @@ Sending raw HTTP requests directly to EntityCore is also fine for reads/simple w
    client = entitysdk.Client(local_store=local_store, token_manager=..., project_context=...)
    ```
    Without this, `entitysdk`'s own `download_*` methods (strategy `download_only`) get no benefit over raw HTTP either — the speedup is specific to `fetch_*`/`stage_*` + a configured `LocalAssetStore`, not `entitysdk` in general. (Source: `openbraininstitute/prod-platform-architecture#219`.)
+
+   **Decision rule — stage over download:** with a `LocalAssetStore` configured, reach for a `stage_*` helper (or `fetch_*`) first and treat `download_*`/raw `requests.get(.../download)` as the fallback for when no local store is mounted. The `FetchFileStrategy` enum captures the spectrum: `link_or_download` (staging default — symlink from the mount, else download), `copy_or_download`, down to `download_only` (what `download_*` forces). The larger the entity, the more this matters: a circuit's `sonata_circuit` directory is effectively un-downloadable over plain HTTP (unbounded S3 prefix, times out), but `stage_circuit` resolves it as cheap symlinks regardless of size. So for circuits specifically, staging isn't just faster — it's the only reliable way to get the full SONATA tree.
 
 ---
 
