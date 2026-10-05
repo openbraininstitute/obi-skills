@@ -16,9 +16,19 @@ license: Apache-2.0
 
 ## What this is, and what to expect
 
-[Jaxley](https://github.com/jaxleyverse/jaxley) is a differentiable compartmental simulator written in JAX. Gradients of any loss with respect to every channel density come from one backward pass, so a 20-parameter fit takes tens to a few hundred gradient steps instead of thousands of simulations. On OBI this runs in the user's sandbox as plain Python; no obi-one task, no launch system, nothing registered.
+[Jaxley](https://github.com/jaxleyverse/jaxley) is a differentiable compartmental simulator written in JAX. Gradients of any loss with respect to every channel density come from one backward pass, so in principle a 20-parameter fit takes tens to hundreds of gradient steps instead of thousands of simulations. On OBI this runs in the user's sandbox as plain Python: no obi-one task, no launch system, nothing registered.
 
-The workflow, measured end-to-end on a real cell (see *Results to expect*):
+**Measured on a real same-cell pair** (C060114A7, rat P12 L5 TTPC, 415 compartments, staging sandbox, Oct 2026):
+
+| stage | outcome | wall time |
+|---|---|---|
+| A: passive + Ih, 4 parameters, trace MSE | **works**: < 1 mV RMS on training sweeps, 1.24 mV on held-out repetitions, input resistance within 2 % | 5–10 min |
+| B: 20 active densities + E_leak, summary statistics | **does not yet beat the literature start**: lower loss came with unphysiological spikes, or with a worse f–I curve (Step 6) | 20–30 min per attempt |
+| Validation: 64 held-out sweeps, eFEL | <!-- RESULTS-V-SHORT --> | ~13 min |
+
+So use this skill to fit passive/Ih properties, to run Jaxley simulations of OBI morphologies, and to explore gradient-based fitting with the user as an experiment: report it as such. For a production e-model, offer [[emodel-building]] (BluePyEModel, evolutionary search on cluster resources).
+
+The workflow:
 
 ```
 EntityCore: CellMorphology (SWC)  +  ElectricalCellRecording (NWB)      ← fetched once, cached
@@ -96,7 +106,7 @@ Many paginated queries in one call will hit the 30 s limit — run long listing 
 **Recording** (`ElectricalCellRecording`): needs current-clamp steps that are both **subthreshold** (passive + sag) and **suprathreshold at several amplitudes** (f–I, adaptation). Check `stimuli` and `recording_origin`.
 
 - `recording_origin: "in_silico"` entries (e.g. 720 `S1HL_L*_cADpyr_*` "simulated electrophysiology traces") are model output, not data — fine for a parameter-recovery test, wrong as an experimental target.
-- BBP rat SSCx recordings (`C…-SR-C1` Romand 2006 P12–P16 L5 TTPCs, `C…-MT-C1` Toledo-Rodriguez) carry ~20 protocols and repetitions; recordings carry `etypes` but no `mtypes`.
+- BBP rat SSCx recordings carry ~20 protocols with repetitions, and `etypes` but no `mtypes`. `C…-SR-C1`: L5 thick-tufted pyramidal cells recorded by S. Romand (LNMC/BBP; the id encodes the 2006–2008 recording date; P12 and P14 in the cells checked). `C…-MT-C1`: M. Toledo-Rodriguez.
 
 **Morphology** (`CellMorphology`): the best case is the **same neuron**. For BBP's Romand cells the reconstruction is named after the recording without `-SR-C1` — `C060114A7-SR-C1` ↔ `C060114A7`. 20 of the 43 cADpyr SR recordings have one (C060109A1–A3, C060110A2/A3/A5, C060112A7, C060114A2/A4–A7, C060116A1/A3/A5, C060202A4–A6, C080501A5, C080501B2). Each is listed **twice** — pick the rat entry (`brain_region` PSAH, created 2021), not the "Translated to mouse from rat data" copy (SSp, 2024). Names like `dend-X_axon-Y_…`, `…_-_Scale_…`, `…_-_Clone_N` are mosaics / scaled clones used to build circuits: not the cell itself.
 
@@ -119,8 +129,8 @@ stimulus/presentation/ics__<Protocol>__<NNN>/data current, unit 'amperes'
 - **The stimulus channel is the *measured* current**, with noise and spike-coupled capacitive artefacts. Do not inject it. Rebuild the command: holding = median before the step, amplitude = median during the step minus holding (`jxfit.clean_step`).
 - **A holding current is applied** (≈ −0.08 nA in IV, ≈ −0.11 nA in IDRest for C060114A7) to keep V ≈ −69 mV. The model must receive the same holding current, and needs a few hundred ms of simulated pre-step time to settle (the IV protocol has only 20 ms of data before its step).
 - **Bridge artefacts** — sub-millisecond V jumps at every current transition. Mask ~1 ms before to ~4 ms after each edge in the loss.
-- Protocol timing (Romand cells): `IV` step 20–1020 ms of 1320 ms (10 levels −0.28…+0.14 nA × 3 repetitions); `IDRest` / `IDThreshold` step 700–2700 ms of 3000 ms (16 levels +0.25…+1.0 nA × 2 repetitions). Some early `IDRest` sweeps have a different length — `jxfit.protocol_table` skips sweeps whose duration does not fit the protocol.
-- 4 kHz sampling resolves AP width/peak only coarsely: weight AP-shape targets loosely.
+- Protocol timing (Romand cells): `IV` step 20–1020 ms of 1320 ms; `IDRest` / `IDThreshold` step 700–2700 ms of 3000 ms (`jxfit.STEP_TIMES`). C060114A7 has 10 IV levels (−0.28…+0.14 nA) × 3 repetitions and 16 IDRest levels (+0.25…+1.0 nA) × 2. Some early `IDRest` sweeps have a different length — `jxfit.protocol_table` skips sweeps whose duration does not fit the protocol. Check other datasets' timing before reusing `STEP_TIMES`.
+- 4 kHz sampling resolves AP *width* only coarsely (2–2.5 ms half-width measured); AP *height* is still a reliable target and needs a tight tolerance (Stage B).
 - Group repetitions by amplitude (`jxfit.add_levels`) and **hold out whole repetitions and whole levels** for validation.
 
 ## Step 3 — Build the Jaxley cell
@@ -185,16 +195,25 @@ Trace MSE does not work for spiking: a spike 2 ms late costs as much as a missin
 - per consecutive **100-ms** window over the step: mean of V, SD of V, and a **soft spike count** — the sum of positive increments of `sigmoid((V + 20)/2)`, ≈ 1 per upward crossing of −20 mV;
 - mean V in [−50, −2] ms before the step (rest at the holding current);
 - soft maximum of V over the step, `τ·logsumexp(V/τ)` with τ = 1 mV (AP height);
-- each standardised by a tolerance (base 1 mV, mean 2 mV, SD 2 mV, count 1 spike, peak 5 mV); loss = mean absolute standardised error.
+- each standardised by a tolerance (base 1 mV, mean 2 mV, SD 2 mV, count 1 spike, peak 2 mV); loss = mean absolute standardised error.
 
-Two failure modes met on the way, both silent:
+Three failure modes met on the way, all silent:
 
 - **Without the count term a silent cell wins.** With mean/SD in 50-ms windows only, the best of 25 random candidates — and every Adam step after it — produced *no spikes at all* and still scored better than a spiking Hay-type model: at a few spikes per window, SD flips with spike *timing*, so a flat trace at the right mean voltage is a cheap local optimum. Check spike counts of the starting point before trusting a descending loss.
 - **Bin the data on an exact time grid.** `t = arange(n) / rate * 1e3` is not exact for 4 kHz; flooring it into 0.25-ms bins leaves ~1 % of bins empty, and an empty bin read as 0 mV is a fake spike in the *target*. Use `t = arange(n) * (1e3 / rate)` and interpolate any empty bin (`jxfit.bin_data` does both).
+- **Lowest loss ≠ good model.** With a 5-mV AP-peak tolerance (1 statistic among ~25 per sweep) the best-loss model had APs peaking near −10 mV instead of +25 mV (AIS Na⁺ collapsed to its lower bound), slid into depolarisation block at the highest current, and parked E_leak on its bound — while matching window means and spike counts. A random search ranked by that loss *chose* such a start over the Hay-type values, which already spiked with full-size APs at nearly the right rates. After every fit, look at the traces and list parameters sitting on a bound.
 
-Freeze the Stage-A values; free the 20 active parameters (bounds from Jaxley's L5PC example, log-scaled) plus `E_leak`. Data: 3 IDRest levels (one repetition), 200 ms before to 800 ms into the step, **dt = 0.05 ms** (0.1 ms drifts spike times by several ms within 100 ms; 0.025 ms is the reference). Forward-only random search (~40 candidates + the generic Hay-type values) → Adam from the best, lr 0.1 → 0.02, ~60 steps. **One Stage-B process at a time** (~1.4 GB).
+Recipe: freeze the Stage-A values; free the 20 active parameters (bounds from Jaxley's L5PC example, log-scaled) plus `E_leak` bounded to a physiological range (−85…−55 mV). Data: 3 IDRest levels (one repetition), 200 ms before to 800 ms into the step, **dt = 0.05 ms** (0.1 ms drifts spike times by several ms within 100 ms; 0.025 ms is the reference). **Start from the literature (Hay-type) values**; use a random search only as a comparison, and check the spike count and AP height of whatever it selects. Tolerances: AP peak **2 mV**, the rest as above. Adam lr 0.05 → 0.015, ~40 steps. **One Stage-B process at a time** (~1.4 GB).
 
-<!-- RESULTS-B -->
+**Measured on C060114A7 — set expectations accordingly.** Neither run produced a model better than the literature starting point:
+
+| | start | loss (own weighting) | spikes in first 800 ms at +0.35 / +0.56 / +0.81 nA (recorded 4 / 9 / 13) | AP peak | grad norm |
+|---|---|---|---|---|---|
+| Hay-type values, unfitted | — | 3.17 | 7 / 9 / 13 | ≈ +30 mV | — |
+| variant 1: best of 41 random candidates, peak tol. 5 mV | 2.47 | → 2.14 (36 steps, plateau) | 7 / 14 / 12, block at +0.81 | ≈ −10 mV | 1–15 |
+| variant 2: Hay-type start, peak tol. 2 mV | 3.17 | → 3.06 (12 steps, stalled) | 10 / 14 / 20 | +20…+27 mV | 10⁵–10⁶ |
+
+Treat Stage B as **experimental**: run it, but compare against the unfitted literature model on held-out sweeps (Step 7), and keep whichever is better. Do not report a Stage-B fit as an e-model without that comparison.
 
 ## Step 7 — Validate
 
@@ -222,6 +241,7 @@ Say these to the user when presenting a fit — they decide how far to trust it:
 
 - **Identifiability.** Somatic current-clamp data constrain lumped properties (input resistance, membrane time constant, sag, f–I, AP shape at the soma). They do not constrain where conductances sit in the dendrites, R_a vs dendritic C_m, or most apical active densities. Equally good fits with different parameters are the norm, not a bug — constrain with priors (distributions, fixed R_a) and say which parameters are pinned by data and which by assumption.
 - **Kinetics are fixed.** Only densities (and Ca-buffer constants) are fitted; kinetics come from the jaxley-mech Hay/BBP models (adult rat L5PC, 34 °C). Cells that differ — young animals (the Romand cells are P12–P16), other cell types, other species, other temperatures — show up as residual misfit that no density can remove (here: slower, deeper sag than Hay's Ih). Jaxley *can* fit kinetic parameters, but only for channels that expose them as parameters (write a custom `jaxley.channels.Channel` with e.g. V½ shifts and τ scales).
+- **Gradients through long spiking simulations explode.** From a start with full-size APs the gradient norm of the summary-statistic loss was 10⁵–10⁶ (1–15 for a model with small spikes); spike times hundreds of ms into a sweep are extremely sensitive to every conductance — the exploding-gradient problem of recurrent nets. Clipping + Adam keep steps bounded but make them nearly sign-like, so progress is slow and noisy. Mitigations to try: shorter simulated windows (more, shorter sweeps; 200–300 ms after the step), Jaxley's Polyak-normalised steps, smaller learning rates, a loss with bounded spike-timing sensitivity (`make_vr_term`, untested).
 - **Spiking losses are hand-designed.** Summary statistics trade timing precision for smoothness; the window length, tolerances and the count term change the answer. Gradient descent finds a local optimum from wherever it starts — the random search, and checking spike counts at the start, matter as much as the optimiser.
 - **Compute.** One core and ≤ 2 GiB per pod: tens of minutes per stage and one full-model fit at a time. Jaxley's main advantage — thousands of simulations batched on a GPU — is not available in the sandbox today.
 - **Nothing is registered.** There is no Jaxley e-model entity type. The channel set is the BBP one, so fitted densities could in principle be mapped onto the BBP mod-file parameters (`gNaTs2_tbar_NaTs2_t` ↔ `NaTs2T_gNaTs2T`, S/cm² in both) and registered via [[emodel-building]]'s entity types — untested; say so if the user asks.
