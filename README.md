@@ -17,6 +17,7 @@ Skills follow the [Agent Skills](https://agentskills.io/) format and live under 
 | [`em-synapse-mapping`](./skills/em-synapse-mapping/SKILL.md) | Map EM-reconstructed afferent synapses onto morphologies → circuit |
 | [`ephys-efeature-extraction`](./skills/ephys-efeature-extraction/SKILL.md) | Compute eFEL e-feature metrics from an intracellular recording |
 | [`ion-channel-api`](./skills/ion-channel-api/SKILL.md) | Fit and simulate ion channel models |
+| [`jaxley-cell-fitting`](./skills/jaxley-cell-fitting/SKILL.md) | Fit a detailed cell model to an OBI recording with Jaxley (gradient descent) in the sandbox |
 | [`morphoviewer-standalone`](./skills/morphoviewer-standalone/SKILL.md) | Standalone HTML morphology / circuit viewers |
 | [`obi-circuit-simulation`](./skills/obi-circuit-simulation/SKILL.md) | SONATA circuit download, modify, register, and simulate |
 | [`obi-links`](./skills/obi-links/SKILL.md) | Hyperlink entities, sandbox paths, and launched jobs |
