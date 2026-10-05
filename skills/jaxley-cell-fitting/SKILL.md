@@ -1,6 +1,6 @@
 ---
 name: jaxley-cell-fitting
-description: Fit a morphologically detailed, conductance-based single-neuron model to a patch-clamp recording with Jaxley (differentiable simulation + gradient descent, JAX) inside the OBI sandbox — morphology and ElectricalCellRecording both taken from EntityCore, BBP/Hay L5PC ion-channel set from jaxley-mech. Covers finding a matched (ideally same-cell) morphology + recording pair, reading BBP NWB sweeps, building the Jaxley cell, a staged fit (passive + Ih by trace MSE, then active conductances by windowed summary statistics), validation on held-out sweeps with eFEL, and the sandbox's hard limits (2 GiB RAM, 4 CPUs, no GPU, ~30 s tool calls). Use when the user wants to fit a cell model with Jaxley or by gradient descent, to try a differentiable alternative to BluePyEModel, or to run Jaxley simulations/optimisations on OBI data in the sandbox.
+description: Fit a morphologically detailed, conductance-based single-neuron model to a patch-clamp recording with Jaxley (differentiable simulation + gradient descent, JAX) inside the OBI sandbox — morphology and ElectricalCellRecording both taken from EntityCore, BBP/Hay L5PC ion-channel set from jaxley-mech. Covers finding a matched (ideally same-cell) morphology + recording pair, reading BBP NWB sweeps, building the Jaxley cell, a staged fit (passive + Ih by trace MSE — reliable; then active conductances by windowed summary statistics — experimental, did not beat literature values in testing), validation on held-out sweeps with eFEL against the unfitted literature model, and the sandbox's hard limits (2 GiB RAM, 4 CPUs, no GPU, ~30 s tool calls). Use when the user wants to fit a cell model with Jaxley or by gradient descent, to try a differentiable alternative to BluePyEModel, or to run Jaxley simulations/optimisations on OBI data in the sandbox.
 license: Apache-2.0
 ---
 
@@ -24,7 +24,7 @@ license: Apache-2.0
 |---|---|---|
 | A: passive + Ih, 4 parameters, trace MSE | **works**: < 1 mV RMS on training sweeps, 1.24 mV on held-out repetitions, input resistance within 2 % | 5–10 min |
 | B: 20 active densities + E_leak, summary statistics | **does not yet beat the literature start**: lower loss came with unphysiological spikes, or with a worse f–I curve (Step 6) | 20–30 min per attempt |
-| Validation: 64 held-out sweeps, eFEL | <!-- RESULTS-V-SHORT --> | ~13 min |
+| Validation: 62 sweeps, eFEL, vs the unfitted literature model | subthreshold within 1–2 mV; spiking: the literature start validated **better** than the Stage-B fit (spikes per 2 s: recording 20.8, literature 24.5, fitted 38.7) | ~13 min |
 
 So use this skill to fit passive/Ih properties, to run Jaxley simulations of OBI morphologies, and to explore gradient-based fitting with the user as an experiment: report it as such. For a production e-model, offer [[emodel-building]] (BluePyEModel, evolutionary search on cluster resources).
 
@@ -217,9 +217,21 @@ Treat Stage B as **experimental**: run it, but compare against the unfitted lite
 
 ## Step 7 — Validate
 
-Forward-simulate everything not used for training — other levels, the other repetition, the **full** step duration, other protocols — at dt = 0.025 ms. Compare eFEL features (`Spikecount`, `mean_frequency`, `time_to_first_spike`, `AP_amplitude`, `AHP_depth_abs`, `ISI_CV`, sag, steady-state V, input resistance) and the f–I curve against the recording. The training loss alone says nothing about generalisation.
+Forward-simulate everything not used for training — other levels, the other repetition, the **full** step duration, other protocols — at dt = 0.025 ms (`jxfit.simulate_rows`, chunks of 4 sweeps). Compare eFEL features (`Spikecount`, `mean_frequency`, `time_to_first_spike`, `AP_amplitude`, `AHP_depth_abs`, `ISI_CV`, sag, steady-state V, input resistance) and the f–I curve against the recording, **and against the unfitted literature model** — that comparison is what the fitting bought. Put the recording's own repetition-to-repetition difference next to each error as the noise floor. The training loss alone says nothing about generalisation.
 
-<!-- RESULTS-V -->
+Measured on C060114A7 (variant-2 model; 32 IDRest + 30 IV sweeps at dt 0.025 ms, ~4 min per 32 × 2.6 s):
+
+| | recording | gradient-fitted | literature (unfitted) | recording rep-to-rep |
+|---|---|---|---|---|
+| IV steady states (10 levels) | — | within 1–2 mV | — | — |
+| input resistance | 58.2 MΩ | 55.3 MΩ | — | — |
+| sag at −0.28 nA | 5.5 mV | 3.6 mV | — | — |
+| IDRest spikes / 2 s (held out) | 20.8 | 38.7 | **24.5** | 1.3 |
+| first-spike latency | 24 ms | 12 ms | 12 ms | 2.4 ms |
+| AHP depth | −51.8 mV | −61.6 mV | −61.1 mV | 3.1 mV |
+| AP half-width (4 kHz) | 2.3 ms | 0.8 ms | 0.8 ms | 0.2 ms |
+
+The best model for this cell was **Stage-A passive/Ih + literature active densities**; the Stage-B fit made the f–I curve worse (rheobase far too low: 17 spikes at +0.25 nA vs 1). The AP width and AHP mismatch, shared by both, is a kinetics problem (adult Hay kinetics vs a P12 cell), not a density problem.
 
 ## Cost reference (staging sandbox, 1 core per process, C060114A7, 415 compartments)
 
@@ -240,9 +252,9 @@ Gradient cost ≈ 5–6 × forward cost. Cost scales linearly with simulated tim
 Say these to the user when presenting a fit — they decide how far to trust it:
 
 - **Identifiability.** Somatic current-clamp data constrain lumped properties (input resistance, membrane time constant, sag, f–I, AP shape at the soma). They do not constrain where conductances sit in the dendrites, R_a vs dendritic C_m, or most apical active densities. Equally good fits with different parameters are the norm, not a bug — constrain with priors (distributions, fixed R_a) and say which parameters are pinned by data and which by assumption.
-- **Kinetics are fixed.** Only densities (and Ca-buffer constants) are fitted; kinetics come from the jaxley-mech Hay/BBP models (adult rat L5PC, 34 °C). Cells that differ — young animals (the Romand cells are P12–P16), other cell types, other species, other temperatures — show up as residual misfit that no density can remove (here: slower, deeper sag than Hay's Ih). Jaxley *can* fit kinetic parameters, but only for channels that expose them as parameters (write a custom `jaxley.channels.Channel` with e.g. V½ shifts and τ scales).
+- **Kinetics are fixed.** Only densities (and Ca-buffer constants) are fitted; kinetics come from the jaxley-mech Hay/BBP models (adult rat L5PC, 34 °C). Cells that differ — young animals (the Romand cells checked are P12–P14), other cell types, other species, other temperatures — show up as residual misfit that no density can remove (here: APs 0.8 vs 2.3 ms wide, AHPs ~10 mV too deep, slower and deeper sag than Hay's Ih). Jaxley *can* fit kinetic parameters, but only for channels that expose them as parameters (write a custom `jaxley.channels.Channel` with e.g. V½ shifts and τ scales).
 - **Gradients through long spiking simulations explode.** From a start with full-size APs the gradient norm of the summary-statistic loss was 10⁵–10⁶ (1–15 for a model with small spikes); spike times hundreds of ms into a sweep are extremely sensitive to every conductance — the exploding-gradient problem of recurrent nets. Clipping + Adam keep steps bounded but make them nearly sign-like, so progress is slow and noisy. Mitigations to try: shorter simulated windows (more, shorter sweeps; 200–300 ms after the step), Jaxley's Polyak-normalised steps, smaller learning rates, a loss with bounded spike-timing sensitivity (`make_vr_term`, untested).
-- **Spiking losses are hand-designed.** Summary statistics trade timing precision for smoothness; the window length, tolerances and the count term change the answer. Gradient descent finds a local optimum from wherever it starts — the random search, and checking spike counts at the start, matter as much as the optimiser.
+- **Spiking losses are hand-designed.** Summary statistics trade timing precision for smoothness; the window length, tolerances and the count term change the answer. Gradient descent finds a local optimum from wherever it starts — the choice of start, and checking its spike counts and AP height, matter as much as the optimiser.
 - **Compute.** One core and ≤ 2 GiB per pod: tens of minutes per stage and one full-model fit at a time. Jaxley's main advantage — thousands of simulations batched on a GPU — is not available in the sandbox today.
 - **Nothing is registered.** There is no Jaxley e-model entity type. The channel set is the BBP one, so fitted densities could in principle be mapped onto the BBP mod-file parameters (`gNaTs2_tbar_NaTs2_t` ↔ `NaTs2T_gNaTs2T`, S/cm² in both) and registered via [[emodel-building]]'s entity types — untested; say so if the user asks.
 - **Stimulus fidelity.** Only somatic injection of a clean step command; bridge-balance and capacitance-compensation errors of the real recording are masked, not modelled; 4 kHz data limit AP-shape targets.
