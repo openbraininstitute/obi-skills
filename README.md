@@ -27,18 +27,36 @@ npx skills add openbraininstitute/obi-skills
 
 # Claude plugin
 
-This repository is also a Claude plugin (`obi-skills`) that bundles all skills above with the production `neuroagent` MCP server (`https://cell-a.openbraininstitute.org/api/agent-ts/mcp`, OAuth public client `obi-mcp`, no client secret, scopes `openid profile email`).
+The `obi` plugin bundles all skills above with the production `neuroagent` MCP server (`https://cell-a.openbraininstitute.org/api/agent-ts/mcp`). The plugin is distributed through this repository, which doubles as a plugin marketplace named `openbraininstitute`.
 
-Install in Claude Code:
+## Install in Claude Code
 
 ```
 /plugin marketplace add openbraininstitute/obi-skills
-/plugin install obi-skills@obi-skills
+/plugin install obi@openbraininstitute
 ```
 
-Sign-in opens in your browser. Port 8080 must be free while signing in.
+Or in one step: `/plugin install obi --marketplace openbraininstitute/obi-skills`. Skills then appear as `/obi:<skill>`, e.g. `/obi:obi-logbook`.
 
-**Releasing changes:** whenever a skill or the MCP config changes, bump `version` in [`.claude-plugin/plugin.json`](./.claude-plugin/plugin.json) in the same PR. Installed plugins are cached by version, so without a bump existing users will not receive the update. Keep the plugin name `obi-skills` so an update replaces the old version instead of adding a second plugin.
+## Install in Claude Desktop / Cowork
+
+1. Open **Customize** in the sidebar and select **Plugins**.
+2. Select **Add marketplace** and enter `openbraininstitute/obi-skills`.
+3. Find **obi** in the list and click **Install**.
+4. Open the installed plugin, go to its **Connectors** tab, and connect `neuroagent`. Installing does not sign you in. Sign-in opens in your browser.
+
+## Updating
+
+Third-party marketplaces do not auto-update by default.
+
+- **Claude Code:** run `/plugin`, open the **Marketplaces** tab, select `openbraininstitute`, and choose **Update marketplace** (or **Enable auto-update**).
+- **Claude Desktop / Cowork:** select **Check for updates** on the marketplace, or turn on **Sync automatically**.
+
+## Maintainers
+
+Whenever a skill or the MCP config changes, bump `version` in [`.claude-plugin/plugin.json`](./.claude-plugin/plugin.json) in the same PR; installed copies are cached by version. Keep the plugin name `obi` so an update replaces the old version instead of adding a second plugin.
+
+To test a branch before merging, run `claude --plugin-dir .` from a checkout, or `/plugin marketplace add openbraininstitute/obi-skills#<branch>`.
 
 # Licence
 

@@ -1,8 +1,10 @@
 {
-  "name": "obi-skills",
+  "name": "obi",
   "version": "0.1.0",
   "description": "Agent Skills for the Open Brain Institute platform (auth, links, logbook, circuit / single-cell / ion-channel simulation, data integration, skeletonization, virtual labs) plus the neuroagent MCP server.",
-  "author": { "name": "Open Brain Institute" },
+  "author": {
+    "name": "Open Brain Institute"
+  },
   "repository": "https://github.com/openbraininstitute/obi-skills",
   "license": "Apache-2.0"
 }
