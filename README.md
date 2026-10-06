@@ -36,7 +36,7 @@ Install in Claude Code:
 /plugin install obi-skills@obi-skills
 ```
 
-Sign-in uses the local callback `http://localhost:8080/callback`, which must be registered in the `obi-mcp` client of the production Keycloak realm `SBO`. Port 8080 must be free while signing in.
+Sign-in opens in your browser. Port 8080 must be free while signing in.
 
 **Releasing changes:** whenever a skill or the MCP config changes, bump `version` in [`.claude-plugin/plugin.json`](./.claude-plugin/plugin.json) in the same PR. Installed plugins are cached by version, so without a bump existing users will not receive the update. Keep the plugin name `obi-skills` so an update replaces the old version instead of adding a second plugin.
 
