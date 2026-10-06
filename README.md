@@ -42,7 +42,7 @@ Or in one step: `/plugin install open-brain-institute --marketplace openbrainins
 
 1. Open **Customize** in the sidebar and select **Plugins**.
 2. Select **Add marketplace** and enter `openbraininstitute/obi-skills`.
-3. Find **open-brain-institute** in the list and click **Install**.
+3. Find **Open Brain Institute** in the list and click **Install**.
 4. Open the installed plugin, go to its **Connectors** tab, and connect `neuroagent`. Installing does not sign you in. Sign-in opens in your browser.
 
 ## Updating

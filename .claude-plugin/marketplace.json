@@ -7,6 +7,7 @@
   "plugins": [
     {
       "name": "open-brain-institute",
+      "displayName": "Open Brain Institute",
       "source": "./",
       "description": "OBI Agent Skills plus the neuroagent MCP server."
     }

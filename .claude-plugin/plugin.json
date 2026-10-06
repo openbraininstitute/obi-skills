@@ -1,5 +1,6 @@
 {
   "name": "open-brain-institute",
+  "displayName": "Open Brain Institute",
   "version": "0.1.0",
   "description": "Agent Skills for the Open Brain Institute platform (auth, links, logbook, circuit / single-cell / ion-channel simulation, data integration, skeletonization, virtual labs) plus the neuroagent MCP server.",
   "author": {
