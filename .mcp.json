@@ -4,8 +4,7 @@
       "type": "http",
       "url": "https://cell-a.openbraininstitute.org/api/agent-ts/mcp",
       "oauth": {
-        "clientId": "obi-mcp",
-        "callbackPort": 8080
+        "clientId": "obi-mcp"
       }
     }
   }
