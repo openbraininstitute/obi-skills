@@ -25,6 +25,21 @@ Example install with the skills CLI (if you use it):
 npx skills add openbraininstitute/obi-skills
 ```
 
+# Claude plugin
+
+This repository is also a Claude plugin (`obi-skills`) that bundles all skills above with the production `neuroagent` MCP server (`https://cell-a.openbraininstitute.org/api/agent-ts/mcp`, OAuth public client `obi-mcp`, no client secret, scopes `openid profile email`).
+
+Install in Claude Code:
+
+```
+/plugin marketplace add openbraininstitute/obi-skills
+/plugin install obi-skills@obi-skills
+```
+
+Sign-in uses the local callback `http://localhost:8080/callback`, which must be registered in the `obi-mcp` client of the production Keycloak realm `SBO`. Port 8080 must be free while signing in.
+
+**Releasing changes:** whenever a skill or the MCP config changes, bump `version` in [`.claude-plugin/plugin.json`](./.claude-plugin/plugin.json) in the same PR. Installed plugins are cached by version, so without a bump existing users will not receive the update. Keep the plugin name `obi-skills` so an update replaces the old version instead of adding a second plugin.
+
 # Licence
 
 Licensed under the Apache License, Version 2.0. See [LICENSE](./LICENSE).

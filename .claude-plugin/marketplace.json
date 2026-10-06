@@ -1,0 +1,14 @@
+{
+  "name": "obi-skills",
+  "description": "Open Brain Institute agent skills and neuroagent MCP server.",
+  "owner": {
+    "name": "Open Brain Institute"
+  },
+  "plugins": [
+    {
+      "name": "obi-skills",
+      "source": "./",
+      "description": "OBI Agent Skills plus the neuroagent MCP server."
+    }
+  ]
+}
