@@ -1,6 +1,6 @@
 ---
 name: virtual-lab-manager-api
-description: Virtual labs and projects on the OBI (Open Brain Institute) platform — the workspace every piece of work belongs to and every credit is charged against. Covers how the current virtual lab/project is decided and how to target a different one (get-default-virtual-lab-and-project, list-virtual-labs-and-projects, the optional vlab_id/project_id arguments on the sandbox tools), what is and is not shared between per-project sandboxes (the home directory is shared per user; /tmp, kernel state and entity-asset mounts are not), and the virtual-lab-manager REST API for creating a project and transferring credits between a lab and its projects. Read it whenever the user asks where they are, wants to work somewhere else, asks about credits or budget, wants a new project, or when a tool reports that no workspace could be determined.
+description: Virtual labs and projects on the OBI (Open Brain Institute) platform — the workspace every piece of work belongs to and every credit is charged against. Covers how the current virtual lab/project is decided and how to target a different one (get-default-virtual-lab-and-project, list-virtual-labs-and-projects, the optional vlab_id/project_id arguments on the sandbox tools), what is and is not shared between per-project sandboxes (the home directory is shared per user; /tmp, kernel state and entity-asset mounts are not), how to run work longer than the ~30 s execute-python/execute-shell tool-call timeout as a background process and poll for it, and the virtual-lab-manager REST API for creating a project and transferring credits between a lab and its projects. Read it whenever the user asks where they are, wants to work somewhere else, asks about credits or budget, wants a new project, runs any long or open-ended code in the sandbox, or when a tool reports that no workspace could be determined.
 license: Apache-2.0
 ---
 
@@ -67,6 +67,41 @@ For `get-sandbox-download-url` / `get-sandbox-upload-url`, pass the same ids you
 Every sandbox tool echoes a `workspace` block in its result showing which vlab/project it actually used and why. When the user cares where something ran, read it back from there rather than assuming.
 
 If a tool reports that no workspace could be determined, the user has no recent workspace and pinned no headers. Call `list-virtual-labs-and-projects`, ask which they want, and pass the ids explicitly.
+
+## Long-running work: the ~30 s tool-call timeout
+
+`execute-python` and `execute-shell` **return after about 30 seconds**. This is a limit on the *tool call*, not on the sandbox: when a call hits it, it comes back looking like a failure while the code often keeps running in the kernel — so you're left not knowing whether it finished, and a naive retry starts the work a second time.
+
+**Whenever a piece of work might run longer than ~30 s — any heavy or open-ended code, not just a specific workflow — don't run it in the foreground. Start it as a background process that writes to a file, then poll for completion in later short calls.** This covers loading or processing large circuits/datasets, long `obi_one` tasks that run locally in the sandbox (e.g. connectivity-matrix extraction, batch e-feature extraction), big downloads, installs, or any arbitrary script whose runtime you can't bound up front.
+
+The pattern:
+
+1. **Write the code to a file, then launch it detached in one short call:**
+
+   ```bash
+   # execute-shell — returns immediately
+   cd /home/jovyan/<topic>
+   nohup python code/run.py > results/<run>/run.log 2>&1 &
+   echo "started pid $!"
+   ```
+
+   Have the script print a clear sentinel (e.g. `echo DONE` / a final `print("DONE")`) and write its real outputs under the topic directory, so completion is unambiguous.
+
+2. **Poll in later short calls** — check the log or the output file; never re-run the job to "see if it's done":
+
+   ```bash
+   # execute-shell — each call returns well under 30 s
+   tail -n 5 /home/jovyan/<topic>/results/<run>/run.log
+   ls -la /home/jovyan/<topic>/results/<run>/<expected-output> 2>/dev/null && echo COMPLETE
+   ```
+
+Things to keep in mind:
+
+- **The kernel and filesystem persist between calls**, so a backgrounded job survives the tool call that started it. `/home/jovyan` is the durable place to write (shared per user); `/tmp` is per-pod and can vanish on a cold start.
+- **A timed-out foreground call is not a failure to retry.** Re-issuing it starts a *second* run — over the same output paths — which for tasks with "output already exists" guards then errors confusingly. Inspect the log/output before doing anything again.
+- **Keep the launching call itself short.** Do setup (writing the script, `pip install`, staging inputs) in their own quick calls; the call that starts the long job should do little more than `nohup … &`.
+- **Poll on a sensible cadence**, and surface progress from the log to the user rather than sitting silent. Consider having the script emit progress lines it can tail.
+- **Redirect state that needs the environment** (`OBI_VLAB_ID`, `OBI_PROJECT_ID`, tokens) is read at launch time; if you background a job in a redirected project, pass the same `vlab_id`/`project_id` on the launching call so it runs in the intended pod.
 
 ## Passing the workspace to the other OBI APIs
 
