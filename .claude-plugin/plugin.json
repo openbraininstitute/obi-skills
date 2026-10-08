@@ -8,6 +8,10 @@
   },
   "icon": "./assets/logo.jpeg",
   "privacyPolicyUrl": "https://www.openbraininstitute.org/privacy",
+  "homepage": "https://www.openbraininstitute.org",
+  "documentationUrl": "https://www.openbraininstitute.org/features",
+  "supportUrl": "https://www.openbraininstitute.org/contact",
+  "termsOfServiceUrl": "https://www.openbraininstitute.org/terms",
   "repository": "https://github.com/openbraininstitute/obi-skills",
   "license": "Apache-2.0"
 }
