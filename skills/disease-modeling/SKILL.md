@@ -18,7 +18,7 @@ license: Apache-2.0
 
 > **Library docs:** Use the **`context7`** MCP server whenever you need up-to-date API documentation for any library used in the sandbox (`entitysdk`, `obi-one`, `bluecellulab`, `bluepyopt`, etc.).
 
-> **OBI server naming:** The OBI MCP server can be connected under any name (e.g. `OBI-local`, `OBI-staging`, `neuroagent-production`). Throughout this skill, `{obi}` stands for whatever that connector is named in this conversation.
+> **OBI server naming:** The OBI MCP server can be connected under any name (e.g. `OBI-local`, `OBI-staging`, `OBI-prod`). Throughout this skill, `{obi}` stands for whatever that connector is named in this conversation.
 
 ## Overview
 

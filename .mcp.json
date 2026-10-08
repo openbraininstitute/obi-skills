@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "neuroagent": {
+    "obi": {
       "type": "http",
       "url": "https://cell-a.openbraininstitute.org/api/agent-ts/mcp",
       "oauth": {

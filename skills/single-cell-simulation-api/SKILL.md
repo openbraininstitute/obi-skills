@@ -337,7 +337,7 @@ For interactive exploration — no campaign needed, immediate results.
 
 When `task/launch` fails with `token_not_found` (auth-manager doesn't have a refresh token for the session — common with MCP/API-only access), use bluecellulab directly in the Python sandbox.
 
-### Via neuroagent MCP sandbox (`execute-python` tool)
+### Via the OBI MCP sandbox (`execute-python` tool)
 
 ```python
 from entitysdk.client import Client
