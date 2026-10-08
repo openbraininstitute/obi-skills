@@ -18,6 +18,7 @@ Skills follow the [Agent Skills](https://agentskills.io/) format and live under 
 | [`ephys-efeature-extraction`](./skills/ephys-efeature-extraction/SKILL.md) | Compute eFEL e-feature metrics from an intracellular recording |
 | [`ion-channel-api`](./skills/ion-channel-api/SKILL.md) | Fit and simulate ion channel models |
 | [`morphoviewer-standalone`](./skills/morphoviewer-standalone/SKILL.md) | Standalone HTML morphology / circuit viewers |
+| [`ngv-metabolism`](./skills/ngv-metabolism/SKILL.md) | Run the NGV unit metabolism model and plot neuronal ATP |
 | [`obi-circuit-simulation`](./skills/obi-circuit-simulation/SKILL.md) | SONATA circuit download, modify, register, and simulate |
 | [`obi-links`](./skills/obi-links/SKILL.md) | Hyperlink entities, sandbox paths, and launched jobs |
 | [`obi-logbook`](./skills/obi-logbook/SKILL.md) | Scientific logbook convention for OBI workflows |
@@ -36,7 +37,7 @@ npx skills add openbraininstitute/obi-skills
 
 # Claude plugin
 
-The `open-brain-institute` plugin bundles all skills above with the production OBI MCP server (`obi`) (`https://cell-a.openbraininstitute.org/api/agent-ts/mcp`). The plugin is distributed through this repository, which doubles as a plugin marketplace named `obi`.
+The `open-brain-institute` plugin bundles all skills above with the production OBI MCP server, registered as `obi` (`https://cell-a.openbraininstitute.org/api/agent-ts/mcp`). The plugin is distributed through this repository, which doubles as a plugin marketplace named `obi`.
 
 ## Install in Claude Code
 

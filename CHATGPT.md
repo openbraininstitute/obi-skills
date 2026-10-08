@@ -1,7 +1,7 @@
 # Using obi-skills with ChatGPT and Codex
 
 This guide explains how to install the OBI Agent Skills from this repository and
-connect to the OBI platform through the **`neuroagent`** MCP server.
+connect to the OBI platform through the **OBI** MCP server (`obi`).
 
 Choose the instructions for your client:
 
@@ -60,7 +60,7 @@ For example, load
 [`skills/ngv-metabolism/SKILL.md`](./skills/ngv-metabolism/SKILL.md).
 The MCP connector below supplies the tools that the instructions refer to.
 
-## 2. Connect the `neuroagent` MCP server
+## 2. Connect the `obi` MCP server
 
 Use the production endpoint:
 
@@ -74,15 +74,15 @@ The connection uses streamable HTTP and OAuth with client ID `obi-mcp` and scope
 ### Codex configuration
 
 Add the following to `~/.codex/config.toml` (or `$CODEX_HOME/config.toml` if
-configured). If `neuroagent` already exists, update its tables instead of adding
+configured). If `obi` already exists, update its tables instead of adding
 duplicate tables. Back up the file before changing an existing connection.
 
 ```toml
-[mcp_servers.neuroagent]
+[mcp_servers.obi]
 url = "https://cell-a.openbraininstitute.org/api/agent-ts/mcp"
 scopes = ["openid", "profile", "email"]
 
-[mcp_servers.neuroagent.oauth]
+[mcp_servers.obi.oauth]
 client_id = "obi-mcp"
 callback_port = 8080
 callback_url = "http://localhost:8080/callback"
@@ -137,14 +137,14 @@ separately tested in this setup.
 Run:
 
 ```bash
-codex mcp login neuroagent
+codex mcp login obi
 ```
 
 Complete OBI sign-in in the browser tab opened by this command. Successful
 authorization prints:
 
 ```text
-Successfully logged in to MCP server 'neuroagent'.
+Successfully logged in to MCP server 'obi'.
 ```
 
 If `codex` is not on your shell's PATH, use the Codex desktop MCP sign-in controls
@@ -152,7 +152,7 @@ or the CLI bundled with your installation. On the macOS installation used for
 testing, the command was:
 
 ```bash
-/Applications/ChatGPT.app/Contents/Resources/codex mcp login neuroagent
+/Applications/ChatGPT.app/Contents/Resources/codex mcp login obi
 ```
 
 That application path is installation-specific.
@@ -163,7 +163,7 @@ In ChatGPT's custom connector / MCP settings, configure:
 
 | Field | Value |
 | --- | --- |
-| Name | `neuroagent` |
+| Name | `obi` |
 | Transport | Streamable HTTP / remote MCP |
 | URL | `https://cell-a.openbraininstitute.org/api/agent-ts/mcp` |
 | Authentication | OAuth |
@@ -178,8 +178,8 @@ enable it for the intended conversation or Project.
 ## 3. Verify the setup
 
 1. Confirm that the MCP connection is authorized. In Codex, successful
-   `codex mcp login neuroagent` output confirms OAuth authorization;
-   `codex mcp get neuroagent` shows the configured endpoint.
+   `codex mcp login obi` output confirms OAuth authorization;
+   `codex mcp get obi` shows the configured endpoint.
 2. Confirm that the conversation exposes the server's tools, including
    `execute-python`, and has access to the desired skill. Authorization alone
    does not verify tool availability or a simulation run.
