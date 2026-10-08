@@ -1,0 +1,12 @@
+{
+  "name": "open-brain-institute",
+  "displayName": "Open Brain Institute",
+  "version": "0.1.0",
+  "description": "Execute end-to-end neuroscience workflows on the Open Brain Institute platform: ground a hypothesis in the literature, build custom single-cell and network models, simulate and explore circuit activity, and return reproducible analyses and figures.",
+  "author": {
+    "name": "Open Brain Institute"
+  },
+  "icon": "./assets/logo.jpeg",
+  "repository": "https://github.com/openbraininstitute/obi-skills",
+  "license": "Apache-2.0"
+}

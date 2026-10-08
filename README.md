@@ -18,6 +18,7 @@ Skills follow the [Agent Skills](https://agentskills.io/) format and live under 
 | [`ephys-efeature-extraction`](./skills/ephys-efeature-extraction/SKILL.md) | Compute eFEL e-feature metrics from an intracellular recording |
 | [`ion-channel-api`](./skills/ion-channel-api/SKILL.md) | Fit and simulate ion channel models |
 | [`morphoviewer-standalone`](./skills/morphoviewer-standalone/SKILL.md) | Standalone HTML morphology / circuit viewers |
+| [`ngv-metabolism`](./skills/ngv-metabolism/SKILL.md) | Run the NGV unit metabolism model and plot neuronal ATP |
 | [`obi-circuit-simulation`](./skills/obi-circuit-simulation/SKILL.md) | SONATA circuit download, modify, register, and simulate |
 | [`obi-links`](./skills/obi-links/SKILL.md) | Hyperlink entities, sandbox paths, and launched jobs |
 | [`obi-logbook`](./skills/obi-logbook/SKILL.md) | Scientific logbook convention for OBI workflows |
@@ -33,6 +34,39 @@ Example install with the skills CLI (if you use it):
 ```bash
 npx skills add openbraininstitute/obi-skills
 ```
+
+# Claude plugin
+
+The `open-brain-institute` plugin bundles all skills above with the production OBI MCP server, registered as `obi` (`https://cell-a.openbraininstitute.org/api/agent-ts/mcp`). (You may also see this server called `neuroagent`; it is the same server.) The plugin is distributed through this repository, which doubles as a plugin marketplace named `obi`.
+
+## Install in Claude Code
+
+```
+/plugin marketplace add openbraininstitute/obi-skills
+/plugin install open-brain-institute@obi
+```
+
+Or in one step: `/plugin install open-brain-institute --marketplace openbraininstitute/obi-skills`. Skills then appear as `/open-brain-institute:<skill>`, e.g. `/open-brain-institute:obi-logbook`.
+
+## Install in Claude Desktop / Cowork
+
+1. Open **Customize** in the sidebar and select **Plugins**.
+2. Select **Add marketplace** and enter `openbraininstitute/obi-skills`.
+3. Find **Open Brain Institute** in the list and click **Install**.
+4. Open the installed plugin, go to its **Connectors** tab, and connect `obi`. Installing does not sign you in. Sign-in opens in your browser.
+
+## Updating
+
+Third-party marketplaces do not auto-update by default.
+
+- **Claude Code:** run `/plugin`, open the **Marketplaces** tab, select `obi`, and choose **Update marketplace** (or **Enable auto-update**).
+- **Claude Desktop / Cowork:** select **Check for updates** on the marketplace, or turn on **Sync automatically**.
+
+## Maintainers
+
+Whenever a skill or the MCP config changes, bump `version` in [`.claude-plugin/plugin.json`](./.claude-plugin/plugin.json) in the same PR; installed copies are cached by version. Keep the plugin name `open-brain-institute` so an update replaces the old version instead of adding a second plugin.
+
+To test a branch before merging, run `claude --plugin-dir .` from a checkout, or `/plugin marketplace add openbraininstitute/obi-skills#<branch>`.
 
 # Licence
 

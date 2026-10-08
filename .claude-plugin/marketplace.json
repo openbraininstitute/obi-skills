@@ -1,0 +1,15 @@
+{
+  "name": "obi",
+  "description": "Execute end-to-end neuroscience workflows on the Open Brain Institute platform: ground a hypothesis in the literature, build custom single-cell and network models, simulate and explore circuit activity, and return reproducible analyses and figures.",
+  "owner": {
+    "name": "Open Brain Institute"
+  },
+  "plugins": [
+    {
+      "name": "open-brain-institute",
+      "displayName": "Open Brain Institute",
+      "source": "./",
+      "description": "Execute end-to-end neuroscience workflows on the Open Brain Institute platform: ground a hypothesis in the literature, build custom single-cell and network models, simulate and explore circuit activity, and return reproducible analyses and figures."
+    }
+  ]
+}

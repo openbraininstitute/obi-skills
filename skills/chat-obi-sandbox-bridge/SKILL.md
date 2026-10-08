@@ -13,7 +13,7 @@ Two separate, non-connected sandboxes are in play. Knowing which one to use, and
 
 > **Related generic skills:** [[obi-links]] — a bridged file should also reach the user as a **link** into JupyterLab, built from the very `download_url` this skill already fetches. See "Link the file, not just bridge it" below. [[obi-logbook]] for the topic-directory convention every path here assumes.
 
-> **A note on naming:** the OBI (Open Brain Institute) MCP server can be connected under any name the user chooses (e.g. `OBI-local`, `OBI-staging`, `OBI-prod`, or something else entirely) — check the actual tool list in this conversation for the exact prefix in use. The tool *suffixes* are fixed regardless of server name: `execute-python`, `execute-shell`, `get-sandbox-download-url`, `get-sandbox-upload-url`, etc. Throughout this skill, `{obi}` stands in for whatever that connector is named here — e.g. `{obi}:execute-python` means "the `execute-python` tool on the connected OBI server, whatever it's called."
+> **A note on naming:** the OBI (Open Brain Institute) MCP server can be connected under any name the user chooses (e.g. `OBI-local`, `OBI-staging`, `OBI-prod`, `neuroagent` — the server's former and still occasionally used name — or something else entirely) — check the actual tool list in this conversation for the exact prefix in use. The tool *suffixes* are fixed regardless of server name: `execute-python`, `execute-shell`, `get-sandbox-download-url`, `get-sandbox-upload-url`, etc. Throughout this skill, `{obi}` stands in for whatever that connector is named here — e.g. `{obi}:execute-python` means "the `execute-python` tool on the connected OBI server, whatever it's called."
 
 ## The two sandboxes
 
