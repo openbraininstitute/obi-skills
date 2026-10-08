@@ -6,6 +6,7 @@
   "author": {
     "name": "Open Brain Institute"
   },
+  "icon": "./assets/logo.jpeg",
   "repository": "https://github.com/openbraininstitute/obi-skills",
   "license": "Apache-2.0"
 }
