@@ -46,22 +46,23 @@ Takes electrophysiology recordings (NWB files stored as `ion-channel-recording` 
 
 ### Entity Model
 
+Fitting uses the generic task-config entities, like skeletonization:
+
 ```
-IonChannelRecording (input)
+IonChannelRecording(s) (input, all at the same temperature)
     │
     ▼
 IonChannelFittingScanConfig (obi-one form)
     │
-    ├── IonChannelModelingCampaign (EntityCore)
-    │       └── campaign_generation_config asset (JSON)
+    ├── ion_channel_modeling__campaign (task-config)  ← parent, stores grid-scan parameters
     │
-    ├── IonChannelModelingConfig (EntityCore, one per coordinate)
-    │       └── ion_channel_modeling_generation_config asset (JSON)
+    ├── ion_channel_modeling__config (task-config)    ← child, one per grid coordinate, LAUNCHABLE
+    │       └── task_config_generator_id → campaign ID
     │
-    └── IonChannelModelingConfigGeneration (EntityCore activity, links them)
+    └── ion_channel_modeling__config_generation (task-activity)  ← links campaign → configs
     │
-    ▼
-IonChannelModel (output) — contains .mod file + figures
+    ▼ (run each config)
+ion_channel_modeling__execution (task-activity) → IonChannelModel (output) — .mod file + figures
 ```
 
 ### Pre-requisite: Finding Ion Channel Recordings
@@ -88,51 +89,47 @@ Each recording has metadata including `temperature`, `ljp` (liquid junction pote
   },
   "initialize": {
     "type": "IonChannelFittingScanConfig.Initialize",
-    "recordings": {
-      "type": "IonChannelRecordingFromID",
-      "id_str": "<ion-channel-recording-uuid>"
-    },
+    "recordings": [
+      {"type": "IonChannelRecordingFromID", "id_str": "<ion-channel-recording-uuid>"},
+      {"type": "IonChannelRecordingFromID", "id_str": "<another-recording-uuid>"}
+    ],
     "ion_channel_name": "Kv1_custom"
   },
-  "minf_eq": {
-    "type": "<MInf equation class name>",
-    "equation_key": "sig_fit_minf"
-  },
-  "mtau_eq": {
-    "type": "<MTau equation class name>",
-    "equation_key": "sig_fit_mtau"
-  },
-  "hinf_eq": {
-    "type": "<HInf equation class name>",
-    "equation_key": "sig_fit_hinf"
-  },
-  "htau_eq": {
-    "type": "<HTau equation class name>",
-    "equation_key": "sig_fit_htau"
-  },
-  "gate_exponents": {
-    "type": "IonChannelFittingScanConfig.GateExponents",
+  "model_type": {
+    "type": "HodgkinHuxleyIonChannelModel",
+    "minf_eq": "sig_fit_minf",
+    "mtau_eq": "sig_fit_mtau",
+    "hinf_eq": "sig_fit_hinf",
+    "htau_eq": "sig_fit_htau",
     "m_power": 1,
     "h_power": 1
   }
 }
 ```
 
-### Available Equation Types
+### Recordings
 
-| Parameter | Available `equation_key` values | Description |
-|-----------|-------------------------------|-------------|
+`recordings` is a list, and all of them are fitted together into one model. They must share a temperature: generation rejects recordings at different temperatures (or with a missing temperature) with a 422, before anything is registered.
+
+### Available Equations
+
+| Field | Available values | Description |
+|-------|------------------|-------------|
 | `minf_eq` | `sig_fit_minf` | Sigmoidal fit for m∞ |
 | `mtau_eq` | `sig_fit_mtau`, `thermo_fit_mtau`, `thermo_fit_mtau_v2`, `bell_fit_mtau` | Time constant for m |
 | `hinf_eq` | `sig_fit_hinf` | Sigmoidal fit for h∞ |
 | `htau_eq` | `sig_fit_htau` | Time constant for h |
 
+All four default to the `sig_fit_*` value.
+
 ### Gate Exponents
 
 | Field | Type | Default | Constraints | Description |
 |-------|------|---------|-------------|-------------|
-| `m_power` | int | 1 | 1–4 | Exponent p in g = ḡ · mᵖ · hᵍ |
-| `h_power` | int | 1 | 0–4 | Exponent q in g = ḡ · mᵖ · hᵍ |
+| `m_power` | int or list of int | 1 | 1–4 | Exponent p in g = ḡ · mᵖ · hᵍ |
+| `h_power` | int or list of int | 1 | 0–4 | Exponent q in g = ḡ · mᵖ · hᵍ |
+
+A list sweeps the exponent: `"m_power": [1, 2], "h_power": [0, 1]` gives 2×2 = 4 configs, one fit each. The models of a sweep are all registered under the campaign name with the same SUFFIX, so record which config produced which model.
 
 ### Ion Channel Name Constraints
 
@@ -142,33 +139,58 @@ Each recording has metadata including `temperature`, `ljp` (liquid junction pote
 
 ### Response
 
-Returns the **campaign ID** (IonChannelModelingCampaign entity):
+Returns the **campaign ID** (the `ion_channel_modeling__campaign` task-config):
 
 ```
 "<campaign-uuid>"
 ```
 
-### Run the fitting task
+The campaign is not launchable; run its child configs.
 
-Ion channel fitting uses **legacy entity types** (IonChannelModelingCampaign, IonChannelModelingConfig) rather than the generic task-config system. The REST generate endpoint creates the campaign and child configs **without running the fit** (`execute_single_config_task=False`). Ion channel fitting is not in the `/declared/task/launch` mappings, so the REST flow alone does not produce an IonChannelModel.
+### Step 2: Find the Configs to Run
 
-To fit a model, run the scan **in-process** with `obi_one` in an environment that has the ion-channel-builder dependency and an authenticated EntitySDK client. Use this in place of the REST generate call; running both would create two campaigns:
-
-```python
-import obi_one as obi
-
-# form: a validated IonChannelFittingScanConfig using the fields above
-# db_client: authenticated entitysdk.Client for the target project
-grid_scan = obi.GridScanGenerationTask(
-    form=form,
-    coordinate_directory_option="ZERO_INDEX",
-    output_root="/home/jovyan/<topic>/results/ion-channel-fitting",
-)
-grid_scan.execute(db_client=db_client)  # registers campaign and child configs
-model_ids = obi.run_tasks_for_generated_scan(grid_scan, db_client=db_client)
+```
+GET /api/entitycore/task-config?task_config_type=ion_channel_modeling__config&task_config_generator_id=<campaign-id>
 ```
 
-The fit runs for each child config and registers its IonChannelModel. Check `model_ids` and the registered entities before reporting success.
+### Step 3: Run Each Config
+
+The fit runs in the small-scale simulator, one request per child config:
+
+**Endpoint:** `POST /api/small-scale-simulator/ion-channel/build/run`
+
+**Request body:**
+
+```json
+{
+  "config_id": "<child-config-uuid>"
+}
+```
+
+**Response (202):**
+
+```json
+{
+  "job_id": "<job-uuid>",
+  "execution_id": "<task-activity-uuid>"
+}
+```
+
+Each request reserves the credits for one fit. `execution_id` is the `ion_channel_modeling__execution` task-activity of the fit.
+
+Ion channel fitting is also registered with the obi-one launch system (`ion_channel_fitting`), but the platform runs fits through the small-scale simulator. Do not launch the same config through both, as that fits it twice.
+
+### Step 4: Monitor
+
+```
+GET /api/entitycore/task-activity/<execution-id>
+```
+
+`status` goes `pending` → `running` → `done` or `error`. When it is `done`, `generated` holds the `IonChannelModel`. The queue status of the job is also available:
+
+```
+GET /api/small-scale-simulator/ion-channel/build/jobs/<job-id>
+```
 
 ### Output: IonChannelModel Entity
 
@@ -330,8 +352,9 @@ GET /api/obi-one/declared/task/<job-id>/stream
 |-------------|-----------|-------------|
 | `ion-channel-recording` | `/api/entitycore/ion-channel-recording` | Input electrophysiology traces (NWB) |
 | `ion-channel-model` | `/api/entitycore/ion-channel-model` | Built model (.mod + metadata) |
-| `ion-channel-modeling-campaign` | `/api/entitycore/ion-channel-modeling-campaign` | Fitting campaign |
-| `ion-channel-modeling-config` | `/api/entitycore/ion-channel-modeling-config` | Single fitting config |
+| `task-config` | `/api/entitycore/task-config` | Fitting campaign (`ion_channel_modeling__campaign`) and configs (`ion_channel_modeling__config`) |
+| `task-activity` | `/api/entitycore/task-activity` | Fitting config generation and fit executions |
+| `ion-channel-modeling-campaign` | `/api/entitycore/ion-channel-modeling-campaign` | Legacy fitting campaign, from before the task-config entities |
 | `simulation-campaign` | `/api/entitycore/simulation-campaign` | Simulation campaign |
 | `simulation` | `/api/entitycore/simulation` | Individual simulation |
 
@@ -339,11 +362,11 @@ GET /api/obi-one/declared/task/<job-id>/stream
 
 | Aspect | Ion Channel Fitting | Ion Channel Simulation | Skeletonization |
 |--------|--------------------|-----------------------|-----------------|
-| Entity types | Legacy (dedicated models) | Legacy (Simulation) | Generic (task-config) |
-| Campaign entity | `IonChannelModelingCampaign` | `SimulationCampaign` | `task-config` (type: `skeletonization__campaign`) |
-| Child config | `IonChannelModelingConfig` | `Simulation` | `task-config` (type: `skeletonization__config`) |
-| Launch via | `run_tasks_for_generated_scan` in-process; REST generation alone does not fit | `/declared/task/launch` with `ion_channel_model_simulation_execution` | `/declared/task/launch` with `morphology_skeletonization` |
-| Config ID for launch | No REST launch path | Simulation entity ID | task-config child ID |
+| Entity types | Generic (task-config) | Legacy (Simulation) | Generic (task-config) |
+| Campaign entity | `task-config` (type: `ion_channel_modeling__campaign`) | `SimulationCampaign` | `task-config` (type: `skeletonization__campaign`) |
+| Child config | `task-config` (type: `ion_channel_modeling__config`) | `Simulation` | `task-config` (type: `skeletonization__config`) |
+| Launch via | `/api/small-scale-simulator/ion-channel/build/run` | `/declared/task/launch` with `ion_channel_model_simulation_execution` | `/declared/task/launch` with `morphology_skeletonization` |
+| Config ID for launch | task-config child ID | Simulation entity ID | task-config child ID |
 
 ## Ion Channel Model Fields (EntityCore)
 
@@ -387,7 +410,7 @@ Record, as the session goes:
 **For fitting (Part 1):**
 - **Objective** — which channel, in which cell type / brain region / species, and what the model is for.
 - **Recordings used** — which ion-channel recordings, the experimental protocol behind them (voltage steps, holding potential, temperature, solutions if known), and why these recordings suit the channel being fitted.
-- **Model form** — the equation type and gate exponents chosen, and the **biophysical justification**: which gating processes (activation, inactivation) are being represented and why that form is appropriate for this channel.
+- **Model form** — the equations and gate exponents chosen, and the **biophysical justification**: which gating processes (activation, inactivation) are being represented and why that form is appropriate for this channel.
 - **Fit outcome** — the fitted kinetic parameters with units, the resulting voltage-dependence (V½, slope, time constants), and how well the model reproduces the recorded traces. Include the fit-quality figures.
 - **Caveats** — temperature the fit is valid at, voltage range covered by the data, any gating process deliberately not modelled.
 
@@ -406,4 +429,4 @@ Do **not** log endpoints, campaign/config ID relationships, launch calls, pollin
 
 - **Entities** — `https://{domain}/app/entity/{id}`. Link the ion channel recordings used as fitting input, the `IonChannelModel` produced by the fit, the models fed into a simulation, and the campaign entities themselves.
 - **Sandbox files** — traces, `.mod` files, fit-quality and I-V/activation plots: take the `download_url` from `{obi}:get-sandbox-download-url` and swap `/files/` for `/lab/tree/`, keeping the rest of the path (`home/jovyan` included). Link the `plots/` directory when there are several figures.
-- **Launched campaigns** — `https://{domain}/app/virtual-lab/{vlab_id}/{project_id}/workflows?tactivity=build&ttype=ion_channel_modeling_campaign` for a fitting campaign (Part 1), and `…?tactivity=simulate&ttype=ion_channel_model_simulation` for a simulation campaign (Part 2). Send both query parameters — `ttype` alone leaves the page on the default Build tab.
+- **Launched campaigns** — `https://{domain}/app/virtual-lab/{vlab_id}/{project_id}/workflows?tactivity=build&ttype=ion_channel_build_campaign` for a fitting campaign (Part 1), and `…?tactivity=simulate&ttype=ion_channel_model_simulation` for a simulation campaign (Part 2). Send both query parameters — `ttype` alone leaves the page on the default Build tab.
