@@ -17,6 +17,7 @@ Skills follow the [Agent Skills](https://agentskills.io/) format and live under 
 | [`em-synapse-mapping`](./skills/em-synapse-mapping/SKILL.md) | Map EM-reconstructed afferent synapses onto morphologies → circuit |
 | [`ephys-efeature-extraction`](./skills/ephys-efeature-extraction/SKILL.md) | Compute eFEL e-feature metrics from an intracellular recording |
 | [`ion-channel-api`](./skills/ion-channel-api/SKILL.md) | Fit and simulate ion channel models |
+| [`morphology-with-spines`](./skills/morphology-with-spines/SKILL.md) | Load & analyze spiny morphologies from a CellMorphology or a segmented-spines Circuit (entitysdk / bluepysnap + morph-spines + ConnectomeUtilities) |
 | [`morphoviewer-standalone`](./skills/morphoviewer-standalone/SKILL.md) | Standalone HTML morphology / circuit viewers |
 | [`ngv-metabolism`](./skills/ngv-metabolism/SKILL.md) | Run the NGV unit metabolism model and plot neuronal ATP |
 | [`obi-circuit-simulation`](./skills/obi-circuit-simulation/SKILL.md) | SONATA circuit download, modify, register, and simulate |
