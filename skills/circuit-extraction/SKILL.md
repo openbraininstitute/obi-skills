@@ -62,6 +62,19 @@ GET /api/entitycore/circuit?project_id=<project-id>
 
 Pick a circuit that has morphologies and electrical cell models (`has_morphologies`, `has_electrical_cell_models`) if the extracted circuit is to be biophysically simulated.
 
+> **Do not extract from these legacy circuits.** Two circuits are legacy builds that will most likely fail extraction. The legacy IDs below are **stable across all environments** (staging and production). Match by ID, not by name.
+>
+> | Name | Legacy ID (exclude) |
+> |------|---------------------|
+> | `nbS1-O1` | `96203ca0-8fbf-4e3a-9c9e-b23309020109` |
+> | `nbS1-HEX0` | `8956d530-f9b0-4b6c-a660-f3cd7074ac55` |
+>
+> A newer, working build of the *same* circuit exists under a **different ID that varies by environment** — so there is no fixed replacement ID to hard-code; resolve it at runtime by name. When choosing or listing a parent circuit:
+>
+> - Filter these two IDs out of the candidates.
+> - If the user asks for `nbS1-O1` or `nbS1-HEX0`, select the circuit with that name whose ID is **not** the legacy one above (the newer build).
+> - If the only circuit matching the name is the legacy one (no replacement found in this environment), do not proceed — flag it to the user.
+
 ## Step 1: Generate the Campaign
 
 **Endpoint:** `POST /api/obi-one/generated/circuit-extraction-scan-config-generate-grid`
