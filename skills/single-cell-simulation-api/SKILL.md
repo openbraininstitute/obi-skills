@@ -64,11 +64,10 @@ Key fields: `id`, `name`, `brain_region`, `species`, `etypes`, `exemplar_morphol
 - The e-model's **species** should match the morphology's species
 - The e-model's **brain region** should be compatible (same or parent region)
 - The e-model's **e-type** determines the electrical behaviour class — select one appropriate for the target neuron type (e.g., `cAC` for continuous accommodating, `bNAC` for burst non-accommodating)
-- Some e-models are blacklisted and cannot be combined with any morphology (legacy models with known issues)
 
 ### Step 3: Check Compatibility
 
-Before creating the ME model, verify the morphology + e-model pair is viable:
+Before building the ME model, verify the morphology + e-model pair is viable:
 
 **Endpoint:** `POST /api/small-scale-simulator/single-neuron/compatibility/run`
 
@@ -94,37 +93,66 @@ Before creating the ME model, verify the morphology + e-model pair is viable:
 
 If `compatible: false`, the `error` field explains why (e.g., section type mismatch, missing mechanisms). **Do not proceed** if incompatible — advise the user to select a different e-model.
 
-### Step 4: Create the ME Model
+### Step 4: Generate the Build Campaign
 
-**Endpoint:** `POST /api/small-scale-simulator/single-neuron`
+The build is an obi-one task on generic task-config entities. Generating it registers the campaign and one config; it does not build anything yet.
+
+**Endpoint:** `POST /api/obi-one/generated/me-model-build-scan-config-generate-grid`
 
 **Request body:**
 ```json
 {
-  "name": "My L5 TPC Model",
-  "description": "L5 thick-tufted pyramidal cell model",
-  "emodel_id": "<emodel-uuid>",
-  "morphology_id": "<cell-morphology-uuid>",
-  "brain_region_id": "<brain-region-uuid>",
-  "species_id": "<species-uuid>",
-  "strain_id": "<strain-uuid-or-null>"
-}
-```
-
-- `brain_region_id`: typically from the morphology's brain region
-- `species_id`: from the morphology's `subject.species.id`
-- `strain_id`: from the morphology's `subject.strain.id` (nullable)
-
-**Response:**
-```json
-{
-  "data": {
-    "id": "<new-memodel-uuid>",
-    "name": "My L5 TPC Model",
-    ...
+  "type": "MEModelBuildScanConfig",
+  "info": {
+    "type": "Info",
+    "campaign_name": "My L5 TPC Model",
+    "campaign_description": "L5 thick-tufted pyramidal cell model"
+  },
+  "initialize": {
+    "type": "MEModelBuildScanConfig.Initialize",
+    "morphology": { "type": "CellMorphologyFromID", "id_str": "<cell-morphology-uuid>" },
+    "emodel": { "type": "EModelFromID", "id_str": "<emodel-uuid>" }
   }
 }
 ```
+
+- `campaign_name` and `campaign_description` become the ME model's name and description.
+- One morphology and one e-model per campaign; neither field takes a list.
+- Species, strain and brain region come from the morphology, m-types from the morphology and e-types from the e-model. They are not part of the request.
+
+**Response:** the campaign id, as a JSON string.
+
+### Step 5: Find the Config and Launch It
+
+```
+GET /api/entitycore/task-config?task_config_type=memodel_build__config&task_config_generator_id=<campaign-id>
+```
+
+```json
+POST /api/obi-one/declared/task/launch
+{
+  "task_type": "memodel_build",
+  "config_id": "<child-config-uuid>"
+}
+```
+
+The launch reserves the credits for one single-cell build. Its response carries `activity_id`, the `memodel_build__execution` task-activity, and `job_id`. The platform's own editor runs the same config through the small-scale simulator instead (`POST /api/small-scale-simulator/single-neuron/build/run`). Do not launch the same config through both, as that builds it twice.
+
+### Step 6: Monitor and Read the ME Model
+
+```
+GET /api/entitycore/task-activity/<activity-id>
+```
+
+`status` goes `pending` → `running` → `done` or `error`. The task registers the ME model first and writes it to `generated` straight away, so `generated` holds the `memodel` while the calibration and validation still run.
+
+The ME model's own `validation_status` tells how far it got: `created` while it is being calibrated and validated, `done` once the validations ran, `error` when calibration or validation failed. `done` does not mean every validation passed; read the ME model's validation results for that:
+
+```
+GET /api/entitycore/validation-result?validated_entity_id=<memodel-uuid>
+```
+
+The calibration (holding current, threshold current, input resistance) is on the ME model as `calibration_result`.
 
 ### E-Type Reference
 
@@ -453,9 +481,11 @@ The key step is `stage_sonata_from_memodel` from `entitysdk.staging.memodel` —
    POST /api/small-scale-simulator/single-neuron/compatibility/run
    → { compatible: true/false, error: "..." }
 
-4. If compatible → create ME model
-   POST /api/small-scale-simulator/single-neuron
-   → { data: { id: "<new-memodel-uuid>" } }
+4. If compatible → generate the build campaign, launch its config
+   POST /api/obi-one/generated/me-model-build-scan-config-generate-grid
+   GET  /api/entitycore/task-config?task_config_type=memodel_build__config&task_config_generator_id=<campaign-id>
+   POST /api/obi-one/declared/task/launch  { task_type: "memodel_build", config_id }
+   → task-activity; its `generated` holds the new ME model
 
 5. Simulate the new ME model
    - Real-time: POST /api/small-scale-simulator/single-neuron/simulation/run
@@ -474,7 +504,7 @@ When helping a user choose an e-model for their morphology:
    - Interneurons → varies: `bNAC`, `cNAC`, `cSTUT`, etc.
    - If unsure, suggest running the compatibility check with a few candidates
 4. **Always run the compatibility check** — Even if species/region match, the morphology geometry may be incompatible with the e-model's mechanism placement (e.g., missing apical dendrite for a model that expects one)
-5. **Blacklisted e-models** — Some legacy e-models are known to be incompatible with all morphologies. If the compatibility check fails repeatedly, suggest trying a different e-type family.
+5. **Repeated failures** — If the compatibility check fails for several e-models of one e-type family, suggest trying a different family.
 
 ---
 
@@ -485,6 +515,8 @@ When helping a user choose an e-model for their morphology:
 | `memodel` | `/api/entitycore/memodel` | Combined morphology + electrical model |
 | `emodel` | `/api/entitycore/emodel` | Electrical model (HOC + params + mechanisms) |
 | `cell-morphology` | `/api/entitycore/cell-morphology` | Neuron morphology |
+| `task-config` | `/api/entitycore/task-config` | ME model build campaign (`memodel_build__campaign`) and config (`memodel_build__config`) |
+| `task-activity` | `/api/entitycore/task-activity` | Build config generation and the build execution |
 | `simulation-campaign` | `/api/entitycore/simulation-campaign` | Campaign entity |
 | `simulation` | `/api/entitycore/simulation` | Individual simulation |
 | `electrical-cell-recording` | `/api/entitycore/electrical-cell-recording` | Experimental ephys traces |
@@ -535,7 +567,7 @@ Do **not** log endpoints, launch/polling mechanics, auth-manager issues, or the 
 - **Entities** — `https://{domain}/app/entity/{id}`. Link the morphology and e-model chosen, the ME model created, the synaptome, the electrical recordings used for e-feature extraction, and the campaigns and simulations produced. Link the ids in the provenance table too.
 - **Sandbox files** — voltage traces, plots, and staged models: take the `download_url` from `{obi}:get-sandbox-download-url` and swap `/files/` for `/lab/tree/`, keeping the rest of the path (`home/jovyan` included). This applies to bluecellulab output from Part 6 exactly as it does to campaign results.
 - **Launched jobs** — `https://{domain}/app/virtual-lab/{vlab_id}/{project_id}/workflows?tactivity={activity}&ttype={type}`, always with both parameters:
-  - ME model build → `tactivity=build&ttype=memodel`
+  - ME model build → `tactivity=build&ttype=memodel_build_campaign`
   - Synaptome build → `tactivity=build&ttype=single_neuron_synaptome`
   - ME model simulation campaign → `tactivity=simulate&ttype=single_neuron_simulation`
   - Synaptome simulation → `tactivity=simulate&ttype=single_neuron_synaptome_simulation`
