@@ -91,7 +91,7 @@ client = Client(
         virtual_lab_id=os.environ["OBI_VLAB_ID"],
         project_id=os.environ["OBI_PROJECT_ID"],
     ),
-    environment=os.environ.get("OBI_ENVIRONMENT", "staging"),
+    environment=os.environ.get("OBI_ENVIRONMENT", "production"),
 )
 ```
 
@@ -176,7 +176,7 @@ network = Circuit("<path>/circuit_config.json")
 # population if its .type is "biophysical"
 pop_name = "biophysical_neurons"
 pop = network.nodes[pop_name]
-if pop.type != "biophysial":
+if pop.type != "biophysical":
     raise ValueError("Non-biophysical node population selected")
 cfg = network.nodes[pop].config
 h5_path = cfg["alternate_morphologies"]["h5v1"]   # merged spiny morphologies .h5
