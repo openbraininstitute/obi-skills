@@ -8,7 +8,15 @@ The plugin bundles all OBI skills plus the production OBI MCP server, registered
 appear as `neuroagent` — it is the same server. The repository doubles as a plugin
 marketplace named `obi`.
 
-## Steps
+## How to handle this (read first)
+
+- **Do not use computer use, screen control, or a browser to perform these steps.**
+  Do not request Accessibility or Screen Recording permissions.
+- Instead, give the user the steps below as a short checklist they follow themselves,
+  with the values (`openbraininstitute/obi-skills`, `obi-mcp`) ready to copy.
+- Then wait for the user to confirm, and help only if they report a problem.
+
+## Steps (for the user to follow)
 
 1. Open **Customize** in the sidebar and select **Plugins**.
 2. Select **Add marketplace** and enter:
