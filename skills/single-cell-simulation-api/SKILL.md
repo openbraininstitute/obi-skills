@@ -286,9 +286,37 @@ POST /api/obi-one/declared/task/launch
 
 ## Part 4: ME Model with Synapses (Synaptome)
 
+A synaptome is a single biophysical neuron with afferent synapses, registered as a `Circuit` with `scale=single` (see [[build-synaptome]]). It is simulated through its **own dedicated endpoint** — not the generic circuit-simulation endpoint.
+
+> **Use the synaptome endpoint whenever the circuit's `scale` is `single`.** A synaptome is stored as a `Circuit` entity, so "circuit simulation" looks like the natural pick — but it is the wrong one. Building the campaign with the generic `CircuitSimulationScanConfig` yields a config that validates and runs, yet fails to open in the web UI with "Invalid campaign configuration" (the UI validates `scale=single` circuits against the stricter synaptome schema). Decide off the circuit's `scale`, the same way the UI does. Full rationale and the circuit-vs-synaptome decision table are in [[obi-circuit-simulation]] ("Choosing the right generate endpoint").
+
 **Endpoint:** `POST /api/obi-one/generated/me-model-with-synapses-circuit-simulation-scan-config-generate-grid`
 
-Uses `MEModelWithSynapsesCircuitFromID` instead of `MEModelFromID`. Launch with:
+**Config type:** `MEModelWithSynapsesCircuitSimulationScanConfig`. It inherits from `CircuitSimulationScanConfig` and overrides only the circuit reference, neuron sets, and morphology-location targeting — everything else (`stimuli`, `recordings`, `timestamps`, run settings) is identical, which is exactly why the two are easy to confuse. The three things to get right:
+
+- **Circuit reference:** use `MEModelWithSynapsesCircuitFromID`, **not** `CircuitFromID`.
+- **Neuron sets:** do **not** declare any `Biophysical*` neuron set (e.g. `BiophysicalPopulationNeuronSet`). The single biophysical neuron is implicit; the synaptome schema only permits virtual input sources as neuron sets.
+- **Morphology locations:** follow the synaptome shape.
+
+```json
+{
+  "type": "MEModelWithSynapsesCircuitSimulationScanConfig",
+  "info": { "type": "Info", "campaign_name": "...", "campaign_description": "..." },
+  "initialize": {
+    "type": "MEModelWithSynapsesCircuitSimulationScanConfig.Initialize",
+    "circuit": { "type": "MEModelWithSynapsesCircuitFromID", "id_str": "<synaptome-circuit-uuid>" },
+    "simulation_length": 1000.0,
+    "v_init": -80.0,
+    "random_seed": 1
+  },
+  "recordings": { "soma_voltage": { "type": "SomaVoltageRecording" } },
+  "stimuli": { "...": "same shape as the generic circuit config" }
+}
+```
+
+Validate with `/config-validation/validate` as usual, but note it does **not** catch the wrong-endpoint mistake — the generic schema is a superset of the synaptome one, so a mis-built config passes validation and only breaks in the UI later. The `scale`-based endpoint choice above is the real guard.
+
+Launch with:
 
 ```json
 {
@@ -434,6 +462,9 @@ The key step is `stage_sonata_from_memodel` from `entitysdk.staging.memodel` —
 |----------|----------|-------|
 | Build an ME model | `POST /api/small-scale-simulator/single-neuron` | Check compatibility first |
 | Quick interactive sim | `POST /api/small-scale-simulator/single-neuron/simulation/run` | Streaming results |
+| Simulate a **standalone ME model** | `me-model-simulation-scan-config-generate-grid` (`MEModelSimulationScanConfig`, `MEModelFromID`) | No synapses; Part 3 |
+| Simulate a **synaptome** (`scale=single` circuit) | `me-model-with-synapses-circuit-simulation-scan-config-generate-grid` (`MEModelWithSynapsesCircuitSimulationScanConfig`, `MEModelWithSynapsesCircuitFromID`) | Part 4. **Not** the generic circuit endpoint, or the campaign won't load in the UI |
+| Simulate a **multi-neuron circuit** (`scale` = `pair`/`small`/`microcircuit`/`region`/`system`/`whole_brain`) | `circuit-simulation-scan-config-generate-grid` (`CircuitSimulationScanConfig`, `CircuitFromID`) | See [[obi-circuit-simulation]] |
 | Parameter sweep campaign | obi-one generate-grid + task/launch | Requires browser session for auth |
 | Sim without browser auth | bluecellulab in sandbox | Use when task/launch gives token_not_found |
 | E-feature extraction | obi-one generate-grid + task/launch | For building new e-models |
