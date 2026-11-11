@@ -156,7 +156,7 @@ Returns the computed metrics for a morphology.
 | `target_simulator` | string | ✓ | e.g. "NEURON" |
 | `circuit_archive` | file | ✓ | `.tar.gz` SONATA circuit archive |
 | `scale_override` | string | | e.g. "pair", "microcircuit", "mesocircuit" |
-| `parent_circuit_id` | UUID | | Parent circuit (for derived circuits) |
+| `parent_circuit_id` | UUID | | Direct parent circuit (the one this was derived from, **not** its root). The root is determined automatically. When reusing an existing circuit's metadata, look up that circuit's own parent via its derivation link (`Derivation` with `generated__id` = its id; take `used`) instead of copying its `root_circuit_id` |
 | `derivation_type` | string | | Required if parent set: e.g. "customization" |
 | `atlas_id` | UUID | | Brain atlas entity ID |
 | `license_id` | UUID | | License entity ID (required if `authorized_public=true`) |
