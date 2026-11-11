@@ -227,6 +227,8 @@ Split "copy" and "modify" into separate tool calls/steps where the execution env
 
 Use the `obi_one` Python SDK's `register_circuit` helper (pre-installed in the OBI sandbox), which returns the new `Circuit` entity with its `.id`.
 
+> **Large circuits:** `register_circuit` runs validation and asset generation (compression, connectivity matrices, plots) in the calling process, which needs a lot of memory, disk, and time, and is often not feasible in a sandbox. For large circuits (any file above 2 GB, which also rules out `POST /declared/circuit/register`) use `register_circuit_with_remote_validation` instead. It uploads directly via `entitysdk` and runs validation and asset generation remotely. See [[data-integration-api]] ("Large Circuits").
+
 ```python
 import os
 from entitysdk.client import Client

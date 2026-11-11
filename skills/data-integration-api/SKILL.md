@@ -144,6 +144,8 @@ Returns the computed metrics for a morphology.
 
 **Content-Type:** `multipart/form-data`
 
+> **2 GB per-file limit.** The infrastructure in front of obi-one rejects any single uploaded file above 2 GB before it reaches the app, so the error is not descriptive. For circuits with larger files, use [Large Circuits](#large-circuits-2-gb-remote-validation) below.
+
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `name` | string | ✓ | Circuit name |
@@ -190,13 +192,44 @@ Returns the computed metrics for a morphology.
 
 **Endpoint:** `POST /declared/circuit/{circuit_id}/validate?force=false`
 
-Re-triggers validation for a draft circuit. Pass `force=true` to re-validate active/disqualified circuits.
+Re-triggers validation for a draft circuit. Pass `force=true` to re-validate active/disqualified circuits. Pass `generate_assets=true` to also generate additional assets after successful validation (default `false`).
 
 ### Generate Circuit Assets
 
 **Endpoint:** `POST /declared/circuit/{circuit_id}/generate-assets?force=false`
 
 Generates compressed circuit and connectivity matrices for an active circuit.
+
+### Large Circuits (> 2 GB): remote validation
+
+For circuits with any file above 2 GB (or when the caller lacks the memory/disk/time for in-process validation), use `register_circuit_with_remote_validation` from `obi_one.db_sdk.registration.circuit.remote`. It uploads directly to EntityCore via `entitysdk` (no 2 GB limit), then runs validation and asset generation as remote jobs via `POST /declared/circuit/{id}/validate?generate_assets=true`. It accepts an uncompressed circuit folder or a `.gz` archive (a `.gz` is extracted locally; the compressed asset is regenerated remotely). Returns `(circuit, job_id)`.
+
+| Need | Use |
+|------|-----|
+| Large circuit, file > 2 GB, or constrained environment (e.g. 2 GB RAM sandbox) | `register_circuit_with_remote_validation` |
+| Small circuit, archive < 2 GB, HTTP only | `POST /declared/circuit/register` |
+| Full in-process control (debugging, offline full validation) | `register_circuit` / `register_circuit_from_metadata` (see [[obi-circuit-simulation]]) |
+
+```python
+circuit, job_id = register_circuit_with_remote_validation(
+    client=client,                # entitysdk Client WITH a project context
+    obi_one_client=obi_one_client,  # httpx.Client, base_url ends in /api/obi-one, Authorization header set
+    circuit_path="path/to/circuit_folder_or_config_or_archive.gz",
+    name=..., description=..., build_category=..., target_simulator=...,
+    brain_region=..., subject=...,  # resolved entities (see obi_one.db_sdk.registration.circuit.resolve)
+    dry_run=True,                 # always dry-run first, then repeat with False
+)
+```
+
+Then poll `lifecycle_status` on the Circuit (`draft` → `active` or `disqualified`) or `GET /declared/task/{job_id}`. Additional assets appear shortly after the circuit becomes `active`.
+
+**Gotchas:**
+- No project context on the `client` raises `ValueError` up front (`dry_run=True` works without one).
+- The token on `obi_one_client` is fixed at creation; create the client right before registering.
+- If starting validation fails, the `draft` circuit stays registered: retry `POST /declared/circuit/{id}/validate?generate_assets=true` rather than re-registering (the name already exists).
+- `dry_run` does not run full SONATA validation (MOD/HOC checks); a circuit can still end up `disqualified` and needs fixing and re-registration (or `force=true` re-validation).
+- Client-side metadata computation still loads node properties into memory, so very large circuits can still hit memory limits.
+- Circuit customization (`/declared/circuit/customize`) has the same 2 GB per-file limit and no workaround yet. Say so explicitly if asked.
 
 ---
 
@@ -365,6 +398,7 @@ Step 3 replaces what would otherwise be three calls (entity creation, metrics, m
 - **Never create morphologies or circuits via EntityCore.** As of today they can only be registered through obi-one `/declared/` endpoints (`register-morphology-with-calculated-metrics`, `circuit/register`). This restriction is specific to these two types — other entities can be created in EntityCore, though the `/declared/` endpoints are preferred where they exist, since they resolve identifiers and generate assets. Reading from EntityCore (e.g. `GET /api/entitycore/circuit/{id}` to poll validation status) is fine — the rule is about creating these two types.
 - **Always validate morphology files first** — invalid files will cause downstream failures in mesh generation and simulations.
 - **Circuit archives must be valid SONATA** — the async validation job checks conformance and will set status to `disqualified` if it fails.
+- **Circuit files above 2 GB** — never use `POST /declared/circuit/register`; use `register_circuit_with_remote_validation` (see Large Circuits).
 - **Contributors use persistent identifiers** — ORCID for persons, ROR for organizations. Don't create them with freeform names.
 - **Duplicate checking is automatic** — the API returns 409 Conflict if entities already exist.
 
