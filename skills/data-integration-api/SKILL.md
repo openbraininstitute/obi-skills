@@ -167,7 +167,7 @@ Returns the computed metrics for a morphology.
 | `publications` | JSON string | | `{"10.1234/doi": {"type": "..."}}` |
 | `overview_image` | file | | Pre-computed overview image (.png/.webp) |
 | `sim_designer_image` | file | | Simulation designer image (.png) |
-| `authorized_public` | bool | | Make publicly visible (default: false) |
+| `authorized_public` | bool | | Make publicly visible (default: false). Keep `false` unless the user is a maintainer (see Important Rules) |
 | `dry_run` | bool | | Validate without registering (default: false) |
 
 **Response:**
@@ -471,6 +471,7 @@ Step 3 replaces what would otherwise be three calls (entity creation, metrics, m
 - **Always validate morphology files first** — invalid files will cause downstream failures in mesh generation and simulations.
 - **Circuit archives must be valid SONATA** — the async validation job checks conformance and will set status to `disqualified` if it fails.
 - **Circuit files above 2 GB** — never use `POST /declared/circuit/register`; use `register_circuit_with_remote_validation` (see Large Circuits).
+- **Register circuits with `authorized_public=false` unless the user is a maintainer.** Most users are not. This applies to every registration route (`POST /declared/circuit/register`, `register_circuit`, `register_circuit_with_remote_validation`). Only set it to `true` if the user explicitly says they are a maintainer and want the circuit public.
 - **Contributors use persistent identifiers** — ORCID for persons, ROR for organizations. Don't create them with freeform names.
 - **Duplicate checking is automatic** — the API returns 409 Conflict if entities already exist.
 
