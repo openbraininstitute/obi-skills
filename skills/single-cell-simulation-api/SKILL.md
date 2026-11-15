@@ -484,7 +484,6 @@ All files this workflow produces go under the conversation's topic directory on 
 
 ```
 /home/jovyan/<topic>/
-├── logbook.md
 ├── morphologies/       ← downloaded morphologies
 ├── emodels/            ← e-models, hoc/mod files
 ├── me-model/           ← the assembled ME model, staged as SONATA for bluecellulab
@@ -493,7 +492,7 @@ All files this workflow produces go under the conversation's topic directory on 
 └── code/
 ```
 
-`logbook.md`, `results/`, `plots/`, and `code/` are fixed by [[obi-logbook]]; the rest are this workflow's inputs. When running bluecellulab in the sandbox (Part 5), stage the circuit under `me-model/` rather than `/tmp` — `/tmp` is ephemeral overlay storage and will not survive.
+`results/`, `plots/`, and `code/` are fixed by [[obi-logbook]]; the rest are this workflow's inputs. When running bluecellulab in the sandbox (Part 5), stage the circuit under `me-model/` rather than `/tmp` — `/tmp` is ephemeral overlay storage and will not survive.
 
 ## Logbook
 

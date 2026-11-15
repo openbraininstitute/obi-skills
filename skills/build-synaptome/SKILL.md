@@ -177,7 +177,6 @@ All files go under the conversation's topic directory on the persistent volume, 
 
 ```
 /home/jovyan/<topic>/
-├── logbook.md
 ├── models/             ← the postsynaptic ME-model pulled from EntityCore
 ├── results/            ← registered synaptome circuit(s); one subdir per parameter setting
 ├── plots/              ← synapse-placement figures

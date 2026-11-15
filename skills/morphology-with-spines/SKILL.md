@@ -374,14 +374,13 @@ All files this workflow produces go under the conversation's topic directory on 
 
 ```
 /home/jovyan/<topic>/
-├── logbook.md
 ├── morphologies/       ← morphology_with_spines .h5 files pulled from EntityCore
 ├── results/            ← spine tables, type distributions, morphometric summaries
 ├── plots/              ← spine-type histograms, density-along-neurite, mesh renders
 └── code/
 ```
 
-`logbook.md`, `results/`, `plots/`, and `code/` are fixed by [[obi-logbook]]; `morphologies/` holds this workflow's inputs. `/tmp` is ephemeral overlay storage and will not survive the session — don't leave downloads there.
+`results/`, `plots/`, and `code/` are fixed by [[obi-logbook]]; `morphologies/` holds this workflow's inputs. `/tmp` is ephemeral overlay storage and will not survive the session — don't leave downloads there.
 
 ## Logbook
 

@@ -105,7 +105,6 @@ Other: `depol_block_bool`.
 
 ```
 /home/jovyan/<topic>/
-├── logbook.md
 ├── recordings/         ← traces pulled from EntityCore (if downloaded)
 ├── results/            ← extracted feature tables (one per trace / protocol set)
 ├── plots/              ← trace overlays, feature-vs-amplitude curves

@@ -148,7 +148,6 @@ The generate endpoint returns the campaign ID; estimate/launch need the child co
 
 ```
 /home/jovyan/<topic>/
-├── logbook.md
 ├── results/            ← extracted sub-circuit(s); one subdir per neuron set / parameter setting
 ├── plots/              ← population / connectivity summaries of the sub-circuit
 └── code/

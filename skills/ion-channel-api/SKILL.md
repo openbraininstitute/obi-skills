@@ -391,7 +391,6 @@ All files this workflow produces go under the conversation's topic directory on 
 
 ```
 /home/jovyan/<topic>/
-├── logbook.md
 ├── recordings/         ← NWB traces pulled from EntityCore
 ├── models/             ← fitted .mod files
 ├── results/            ← simulated traces, per condition
@@ -399,7 +398,7 @@ All files this workflow produces go under the conversation's topic directory on 
 └── code/
 ```
 
-`logbook.md`, `results/`, `plots/`, and `code/` are fixed by [[obi-logbook]]; `recordings/` and `models/` are this workflow's inputs and outputs.
+`results/`, `plots/`, and `code/` are fixed by [[obi-logbook]]; `recordings/` and `models/` are this workflow's inputs and outputs.
 
 ## Logbook
 
