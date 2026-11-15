@@ -93,7 +93,6 @@ The generate endpoint returns the campaign ID; estimate/launch need the child co
 
 ```
 /home/jovyan/<topic>/
-├── logbook.md
 ├── results/            ← parameterized circuit(s); one subdir per parameter setting
 ├── plots/              ← synaptic parameter distributions, PSP/PSC checks
 └── code/

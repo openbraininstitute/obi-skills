@@ -116,7 +116,6 @@ A failure here returns an HTTP error immediately (nothing is registered). Deeper
 
 ```
 /home/jovyan/<topic>/
-├── logbook.md
 ├── overrides/          ← the edge/hoc/mod/node/config files being uploaded (keep pristine)
 ├── results/            ← notes on the derived circuit, validation outcome
 └── code/               ← scripts that generated the override files

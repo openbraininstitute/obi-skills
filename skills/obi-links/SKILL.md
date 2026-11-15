@@ -95,7 +95,7 @@ It looks attractive because it drops the username and server id, but it **does n
 
 ### Notes
 
-- **The link is bound to the current sandbox instance.** `{server_id}` changes after `{obi}:kill-sandbox` or an idle shutdown, and links minted earlier stop working. Mint them fresh in the session you hand them out in; never copy one from an old transcript, and keep them out of `logbook.md`, which outlives the server (record the plain path there).
+- **The link is bound to the current sandbox instance.** `{server_id}` changes after `{obi}:kill-sandbox` or an idle shutdown, and links minted earlier stop working. Mint them fresh in the session you hand them out in; never copy one from an old transcript, and keep them out of the research log, which outlives the server (save the file with `logbook-save-file` and use its saved name there).
 - **Link files under `/home/jovyan`** — the EFS-backed home where all work belongs (see [[obi-logbook]]). `/tmp` is addressable but vanishes with the container, so linking it is pointless.
 - **Directories work too** — `…/lab/tree/home/jovyan/<topic>/plots/` opens the folder in the file browser. Prefer one directory link over ten file links.
 - **The link opens for that user only**, when logged in. It is not shareable with a colleague.
@@ -160,8 +160,8 @@ The activity page lists jobs by type; it does not deep-link one job. So pair the
 
 ## In the logbook
 
-[[obi-logbook]] admits provenance IDs and output artifact paths as science, and excludes plumbing. Applied to links:
+[[obi-logbook]] admits provenance IDs and saved files as science, and excludes plumbing. Applied to links:
 
 - **Entity links: yes.** Link the ids in the provenance table — they stay valid indefinitely and take a reader straight to the data.
-- **Output files: the plain path, not the link.** JupyterLab URLs carry the current server id and die with it; the path stays valid for as long as the volume does.
+- **Output files: save them, then use the saved name.** A file that matters is saved to the research log with `logbook-save-file`, and the entry names it by the name the tool returns. A JupyterLab URL carries the current server id and dies with it, and a sandbox path opens only for the user.
 - **Download/upload fetch links: never.** Those are short-lived, single-file credentials, not provenance. Workflow-activity links are session plumbing too — they belong in the reply, not the record.

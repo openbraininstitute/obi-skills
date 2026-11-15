@@ -128,7 +128,6 @@ Each generate endpoint returns the campaign ID; estimate/launch need the child c
 
 ```
 /home/jovyan/<topic>/
-├── logbook.md
 ├── recordings/         ← ephys traces pulled from EntityCore
 ├── features/           ← extracted e-features (optimization targets)
 ├── results/            ← optimized e-models; one subdir per seed / parameter setting

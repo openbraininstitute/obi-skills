@@ -248,14 +248,13 @@ All files this workflow produces go under the conversation's topic directory on 
 
 ```
 /home/jovyan/<topic>/
-├── logbook.md
 ├── meshes/             ← EM cell meshes pulled from EntityCore
 ├── results/            ← skeleton morphologies; one subdir per parameter setting
 ├── plots/              ← morphometrics, skeleton overlays
 └── code/
 ```
 
-`logbook.md`, `results/`, `plots/`, and `code/` are fixed by [[obi-logbook]]; `meshes/` holds this workflow's inputs. Name the `results/` subdirectories after the parameter setting that produced them, so a skeleton can always be traced back to its grid coordinate.
+`results/`, `plots/`, and `code/` are fixed by [[obi-logbook]]; `meshes/` holds this workflow's inputs. Name the `results/` subdirectories after the parameter setting that produced them, so a skeleton can always be traced back to its grid coordinate.
 
 ## Logbook
 

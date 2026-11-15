@@ -11,9 +11,9 @@ license: Apache-2.0
 > **Platform mechanics live in [[obi-circuit-simulation]].** This skill is the scientific/process layer: what question to ask, what literature to gather, how to sequence the workflow. For *how* to actually find/download/modify/register a circuit or configure/run/poll a simulation, read and follow [[obi-circuit-simulation]] — do not duplicate that mechanical detail here.
 
 > **Generic skills this one builds on — follow them, don't re-derive:**
-> - [[obi-logbook]] — the logbook convention: where it lives, when to append, and what belongs in it (the science, never the plumbing). This skill only adds the disease-modeling-specific sections; everything else comes from there.
+> - [[obi-logbook]] — the logbook convention: where it lives, when to add to it, and what belongs in it (the science, never the plumbing). This skill only adds the disease-modeling-specific sections; everything else comes from there.
 > - [[obi-sandbox-auth]] — obtaining OBI credentials. **A Neurodamus/CoreNeuron simulation of more than 20 neurons needs the offline-access consent flow before launch** — check this before configuring the campaign. Since this skill favours small circuits (low tens of neurons), a run can cross that line without you noticing; count the neurons rather than assuming "small" means exempt.
-> - [[chat-obi-sandbox-bridge]] — getting plots, result files, and the finished logbook back to the user.
+> - [[chat-obi-sandbox-bridge]] — getting plots and result files back to the user. The logbook is not bridged: it is the research log, and the user opens its `url`.
 > - [[obi-links]] — every entity id, sandbox file, and launched campaign handed to the user goes out as a hyperlink, never as a bare UUID or path. See the Linking section below.
 
 > **Library docs:** Use the **`context7`** MCP server whenever you need up-to-date API documentation for any library used in the sandbox (`entitysdk`, `obi-one`, `bluecellulab`, `bluepyopt`, etc.).
@@ -45,7 +45,7 @@ Before starting, verify:
 
 ## Step 0 — Set up the topic directory and logbook (do this first, before anything else)
 
-Follow the directory convention in [[obi-logbook]]: one directory per **topic** at the root of the persistent volume, named for the scientific subject in kebab-case — here, the disease and the circuit under study (`alzheimer-ca1`, `parkinson-stn`), not the workflow. Check whether it already exists before creating it: if it does, either resume that work by appending to its existing logbook, or pick a more specific topic name.
+Follow the directory convention in [[obi-logbook]]: one directory per **topic** at the root of the persistent volume, named for the scientific subject in kebab-case — here, the disease and the circuit under study (`alzheimer-ca1`, `parkinson-stn`), not the workflow. Check whether it already exists before creating it: if it does, either resume that work by continuing its research log, or pick a more specific topic name.
 
 ```python
 # {obi}:execute-python
@@ -64,25 +64,13 @@ else:
 print(f"Topic dir: {topic_dir}")
 ```
 
-The input directories (`circuit-original/`, `circuit-disease/`) and the per-condition split under `results/` are this workflow's specialisation of the backbone; `logbook.md`, `results/`, `plots/`, and `code/` are fixed by [[obi-logbook]].
+The input directories (`circuit-original/`, `circuit-disease/`) and the per-condition split under `results/` are this workflow's specialisation of the backbone; `results/`, `plots/`, and `code/` are fixed by [[obi-logbook]].
 
 **Use `topic_dir` as the root for every OBI sandbox path for the rest of the conversation.**
 
-Then create the logbook at `{topic_dir}/logbook.md` following [[obi-logbook]] — that skill owns the mechanics (EFS location, append-as-you-go discipline, and the rule that only science goes in, never HTTP/auth/tooling detail). Use the disease-modeling section set below in place of the generic one:
+Then find or create the research log with `logbook-list` / `logbook-create`, following [[obi-logbook]] — that skill owns the mechanics (the `logbook-*` tools, add-as-you-go discipline, and the rule that only science goes in, never HTTP/auth/tooling detail). Name the log `<Disease> modeling: <circuit>` and give the scientific question as its description. Use the disease-modeling section set below in place of the generic one, one `logbook-add-entry` per section:
 
 ```markdown
----
-topic: <TOPIC>
-workflow: disease-modeling
-disease: <DISEASE_OR_CONDITION>
-objective: <the scientific question>
-date: <TODAY>
-topic_dir: /home/jovyan/<TOPIC>
-status: in-progress
----
-
-# <Disease> Modeling — Session Log
-
 ## Rationale            <!-- why this disease mechanism, why a circuit model can address it -->
 ## Literature Parameters
 ## Circuit Selection
@@ -92,7 +80,7 @@ status: in-progress
 ## Next Steps
 ```
 
-Create and append to it via `{obi}:execute-python`, never via `bash_tool`/the Anthropic sandbox — the Anthropic sandbox only ever sees the logbook at the very end (Step 4), when it's bridged over for presentation. Never wait until the end to fill it in.
+Write it only with the `logbook-*` tools — never a `logbook.md` file, on the OBI sandbox or in the Anthropic sandbox. Never wait until the end to fill it in.
 
 ---
 
@@ -115,7 +103,7 @@ Use Claude's **built-in** search tools — do **not** assume any external search
 
 **Guardrail:** For every parameter you use, record the source (authors, year, DOI or URL) in the logbook. Never use an unattributed parameter.
 
-After searching, append findings to logbook:
+After searching, add the findings as one `logbook-add-entry`:
 ```
 ## Literature Parameters
 - <parameter>: <change> in <cell type/region> (Author et al. Year, doi:...)
@@ -194,12 +182,10 @@ curl -sS -H "Authorization: Bearer <token>" "<url>" \
 present_files(filepaths=["/mnt/user-data/outputs/comparison.png"])
 ```
 
-Repeat for every plot. Then finalize the logbook **on EFS** (its canonical location — see Step 0), and only then bridge the finished file over for presentation:
+Repeat for every plot. Save each plot that matters to the research log with `logbook-save-file`, so colleagues see it too. Then add the last entries to the log:
 
-```python
-# {obi}:execute-python — finalize logbook, still on EFS at topic_dir
-with open(logbook_path, "a") as f:
-    f.write("""
+```
+# logbook-add-entry
 ## Results Summary
 - Control: ...
 - Disease: ...
@@ -207,28 +193,9 @@ with open(logbook_path, "a") as f:
 
 ## Next Steps
 - ...
-""")
 ```
 
-```
-# {obi}:get-sandbox-download-url — bridge the finished logbook, same pattern as plots
-{obi}:get-sandbox-download-url(path="<TOPIC_DIR>/logbook.md")
-```
-
-```bash
-# bash_tool
-curl -sS -H "Authorization: Bearer <token>" "<url>" \
-     -o /mnt/user-data/outputs/logbook.md
-```
-
-```
-present_files(filepaths=[
-    "/mnt/user-data/outputs/comparison.png",
-    "/mnt/user-data/outputs/logbook.md"
-])
-```
-
-The copy in `/mnt/user-data/outputs` is a presentation-only snapshot — it's fine that it resets between conversations, since the canonical, persistent copy always lives on EFS at `{topic_dir}/logbook.md` and survives independently.
+Give the user the `url` of the research log in the same message as the plots. The log is not bridged: the user and their colleagues open it in the web app, with the saved figures in it.
 
 ---
 
@@ -236,7 +203,7 @@ The copy in `/mnt/user-data/outputs` is a presentation-only snapshot — it's fi
 
 - **Always cite literature** for every biophysical parameter used. Never apply a change without a reference.
 - **Log the science, not the plumbing** — per [[obi-logbook]]. The logbook records the mechanism, parameters, protocol, numbers, and interpretation; never endpoints, tokens, sandbox restarts, or workarounds.
-- **Simulations run on OBI, not in the Anthropic sandbox.** The Anthropic sandbox is for light glue work (curl, file bridging) only — the logbook itself is written and appended to on EFS (`{topic_dir}/logbook.md`) via `{obi}:execute-python`, and only bridged to the Anthropic sandbox as a final snapshot for presentation (Step 4).
+- **Simulations run on OBI, not in the Anthropic sandbox.** The Anthropic sandbox is for light glue work (curl, file bridging) only. The logbook is the research log, written only with the `logbook-*` tools (Step 0).
 - **Save all code** you write to `{topic_dir}/code/` for reproducibility.
 - **One file per `get-sandbox-download-url` call.** For multiple plots, call it once per file or `tar` them first.
 - **Tokens are short-lived** — fetch the download URL immediately before curling; do not cache across turns.
@@ -309,6 +276,7 @@ In the Step 4 presentation message, the three things worth linking are:
 
 - **The entities** — `https://{domain}/app/entity/{id}` for the source circuit, the registered modified circuit, and the simulation campaigns for both the control and the perturbed condition. Link them at first mention in the summary, and link the id cells in the logbook's provenance table.
 - **The launched campaigns** — `https://{domain}/app/virtual-lab/{vlab_id}/{project_id}/workflows?tactivity=simulate&ttype={simulation_type}`, with `{simulation_type}` matching the circuit's scale (`small_microcircuit_simulation` for the small circuits this skill favours; see [[obi-links]] for the full table). Both parameters are required.
-- **The sandbox files** — plots, result files, and `logbook.md`: take the `download_url` already fetched for the bridging step and swap `/files/` for `/lab/tree/`, keeping the rest of the path (`home/jovyan` included). Give the link *alongside* the bridged file, not instead of it — the artifact is what the user reads, the link is how they get back to the original.
+- **The research log** — its `url`, from `logbook-create` or `logbook-list`.
+- **The sandbox files** — plots and result files: take the `download_url` already fetched for the bridging step and swap `/files/` for `/lab/tree/`, keeping the rest of the path (`home/jovyan` included). Give the link *alongside* the bridged file, not instead of it — the artifact is what the user reads, the link is how they get back to the original.
 
-The logbook itself keeps entity links and plain output paths; JupyterLab URLs, download URLs, and tokens stay out of it.
+The logbook itself keeps entity links and the names of saved files; JupyterLab URLs, download URLs, and tokens stay out of it.

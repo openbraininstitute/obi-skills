@@ -120,9 +120,9 @@ There is no direct sandbox-to-sandbox transfer here either. The only supported p
 curl -sS -X PUT --data-binary @/mnt/user-data/uploads/sample-image.jpg "<upload_url>"
 ```
 
-## The logbook is one of the files to bridge
+## The logbook is not bridged
 
-Scientific sessions keep a logbook on the OBI sandbox's EFS volume (see [[obi-logbook]]). It is a deliverable, not scratch: at the end of a session, bridge `/home/jovyan/<topic>/logbook.md` over with the same 4-step pattern as the plots, and include it in the `present_files` call. Because it is `.md`, it renders as a live artifact. The canonical copy stays on EFS — what reaches the user is a presentation snapshot.
+Scientific sessions keep their logbook in the project's research log, written with the `logbook-*` tools (see [[obi-logbook]]), not in a file on the sandbox. There is nothing to bridge: give the user the `url` of the research log, in the same message as the bridged plots.
 
 ## Link the file, not just bridge it
 
