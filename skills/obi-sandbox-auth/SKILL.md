@@ -1,6 +1,6 @@
 ---
 name: obi-sandbox-auth
-description: Manages authentication against the OBI (Open Brain Institute) auth-manager API from inside the OBI sandbox. Covers three triggers — (1) exchanging the sandbox's built-in OBI_ACCESS_TOKEN once at session start for a persistent token id, (2) minting a fresh access token from that id whenever a credential is needed (no bearer required, no expiry bookkeeping), and (3) obtaining offline-access consent before launching a Neurodamus/CoreNeuron circuit simulation of more than 20 neurons (the point at which obi-one routes the job to cluster resources; Brian2 and inait never need it). Use this skill whenever a task touches the OBI sandbox (execute-python, execute-shell), OBI's auth-manager endpoints, or a simulation launch — do not call these endpoints ad hoc without consulting it first, since ordering and header format matter. OBI_ACCESS_TOKEN expires in minutes, so never treat it as a session-long credential or try to keep it alive.
+description: Manages authentication against the OBI (Open Brain Institute) auth-manager API from inside the OBI sandbox. Covers three triggers — (1) exchanging the sandbox's built-in OBI_ACCESS_TOKEN once at session start for a persistent token id, (2) minting a fresh access token from that id whenever a credential is needed (no bearer required, no expiry bookkeeping), and (3) obtaining offline-access consent before launching a Neurodamus/CoreNeuron circuit simulation of more than 20 neurons (the point at which obi-one routes the job to cluster resources; Brian2 and inait never need it), or before any launch when the exchange in (1) is refused, as it is for the neuroagent MCP connector's token. Use this skill whenever a task touches the OBI sandbox (execute-python, execute-shell), OBI's auth-manager endpoints, or a simulation launch — do not call these endpoints ad hoc without consulting it first, since ordering and header format matter. OBI_ACCESS_TOKEN expires within the hour, so never treat it as a session-long credential or try to keep it alive.
 license: Apache-2.0
 ---
 
@@ -12,7 +12,7 @@ This skill governs how to authenticate against OBI's `auth-manager` API (base pa
 
 ## The model: exchange once, then mint on demand
 
-**`OBI_ACCESS_TOKEN` is an ordinary Keycloak access token and it expires in minutes, not hours.** Do not treat it as a session-long credential, and do not try to keep it alive — access tokens are not designed to be extended. Only the *refresh* token can be long-lived, and auth-manager already vaults that for you.
+**`OBI_ACCESS_TOKEN` is an ordinary Keycloak access token and it lives an hour at most; the sandbox may hand you one that is already most of the way through it.** Do not treat it as a session-long credential, and do not try to keep it alive — access tokens are not designed to be extended. Only the *refresh* token can be long-lived, and auth-manager already vaults that for you.
 
 So the whole scheme is two steps:
 
@@ -38,6 +38,10 @@ That `id` is **the UUID of the stored refresh token**, not a session identifier.
 
 **If it instead returns `{"error":"Token is not active","code":"token_not_active"}`:** the sandbox's token has already expired. Call the sandbox-kill tool (`kill-sandbox` on the OBI connector) to tear down and recreate the sandbox — this issues a fresh `OBI_ACCESS_TOKEN` automatically — then retry the exchange once.
 
+**If it returns `HTTP 400` with `"code":"validation_error"` and Keycloak's `Refresh token not valid as requested_token_type because creating a new session is needed`:** the token is valid (`/v1/validate-token` says so), but Keycloak will not exchange it. The neuroagent MCP connector's token (`azp: obi-mcp`) gets this, and killing the sandbox does not help. Use an offline token instead, for every launch, machine or cluster: start Trigger 3 at step 3c. If 3c already returns a `persistent_token_id` (consent was given earlier), go to 3d; otherwise do 3a and 3b first. From then on, mint every bearer (Trigger 2) from the 3c id instead of Trigger 1's.
+
+Without this, a launch with `OBI_ACCESS_TOKEN` as the bearer returns `500 "Failed to submit task job"` and leaves a simulation execution in `error` with no executor, and `POST /v1/refresh-token-id` with that bearer returns `502` `invalid_grant` "Token is not active".
+
 ## Trigger 2 — Any time you need a usable access token
 
 **When:** Before any call that needs a bearer credential — an auth-manager call, a simulation launch, a downstream API request. There is no time threshold to track: mint one whenever you need one, and mint a new one rather than reusing an old one.
@@ -57,12 +61,12 @@ Note there is **no `Authorization` header** here — this endpoint is unauthenti
 
 ### What *not* to do
 
-- **Don't poll `refresh-token-id` on a timer as a keep-alive.** `POST /v1/refresh-token-id` requires a valid `Authorization: Bearer` header, so once `OBI_ACCESS_TOKEN` has expired — which happens in minutes — it just returns 401. A scheme that checks in every couple of hours would 401 on every attempt while appearing to be a working refresh loop. It also does not extend the SSO session's idle timer or the vaulted token's lifetime; there is no call here that buys you more time.
+- **Don't poll `refresh-token-id` on a timer as a keep-alive.** `POST /v1/refresh-token-id` requires a valid `Authorization: Bearer` header, so once `OBI_ACCESS_TOKEN` has expired — which happens within the hour — it just returns 401. A scheme that checks in every couple of hours would 401 on every attempt while appearing to be a working refresh loop. It also does not extend the SSO session's idle timer or the vaulted token's lifetime; there is no call here that buys you more time.
 - **Don't infer token validity from elapsed time.** If you genuinely need to test a token rather than just mint a new one, `GET /v1/validate-token` introspects it with Keycloak and returns `{"data":{"valid":true|false}}`. Minting is almost always simpler.
 
 ## Trigger 3 — Offline-access consent before a large simulation
 
-**When:** About to launch a **Neurodamus/CoreNeuron** circuit simulation of **more than 20 neurons**. Do this check before kicking off the simulation job, not after.
+**When:** About to launch a **Neurodamus/CoreNeuron** circuit simulation of **more than 20 neurons**. Do this check before kicking off the simulation job, not after. Also before **any** launch when Trigger 1's exchange was refused with "creating a new session is needed" (see Trigger 1): then the scope below does not apply.
 
 Why 20: obi-one derives a circuit's *scale* from its neuron count — `single` (1), `pair` (2), `small` (≤ 20, `MAX_SMALL_MICROCIRCUIT_SIZE`), and `microcircuit` above that. For the NEURON/CoreNeuron simulators, `single`/`pair`/`small` route to `circuit_simulation_neurodamus_machine`, which is session-scoped and needs no offline token; anything larger routes to `circuit_simulation_neurodamus_cluster`, which runs on cluster resources and does require consent. **The routing is automatic** — the caller does not pick machine vs cluster, obi-one derives it from the circuit, so the neuron count is the only thing to check.
 
