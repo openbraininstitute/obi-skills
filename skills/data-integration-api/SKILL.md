@@ -234,7 +234,7 @@ project_id = os.environ.get("OBI_PROJECT_ID", "")
 client = Client(
     token_manager=TokenFromEnv("OBI_ACCESS_TOKEN"),
     project_context=ProjectContext(virtual_lab_id=vlab_id, project_id=project_id),
-    environment=os.environ.get("OBI_ENVIRONMENT", "staging"),
+    environment=os.environ.get("OBI_ENVIRONMENT", "production"),
 )
 
 # Typically reuse brain_region and subject from the source circuit
