@@ -242,7 +242,7 @@ The copy in `/mnt/user-data/outputs` is a presentation-only snapshot — it's fi
 - **Tokens are short-lived** — fetch the download URL immediately before curling; do not cache across turns.
 - **If curl fails** with "Host not in allowlist" — tell the user to enable **Settings → Capabilities → Allow network egress → All domains** in the Anthropic sandbox.
 - **Split long operations into separate tool calls** — e.g. copy and modify a circuit in separate `execute-python` calls so a transient sandbox timeout doesn't lose both steps.
-- **If `execute-python` or `execute-shell` are unresponsive or timing out**, call `{obi}:kill-sandbox` (no arguments). This stops the stuck server; the next `execute-python` call will cold-start a fresh one automatically.
+- **If `execute-python` or `execute-shell` are unresponsive or timing out**, call `{obi}:kill-sandbox` (no arguments). This stops the stuck server; the next `execute-python` call will cold-start a fresh one automatically. A call that returns `status: "starting"` is not stuck: wait and call again (see [[obi-sandbox-sizing]]).
 - **No fixed plot layout is required** — pick whichever comparison best demonstrates the effect under study; don't feel bound to reproduce any specific figure template.
 - For platform-level pitfalls (broken `neuron_set` field, missing `delay` field, correct polling params, etc.), see [[obi-circuit-simulation]]'s Known Issues section.
 
