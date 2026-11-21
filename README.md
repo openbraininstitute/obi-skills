@@ -23,6 +23,7 @@ Skills follow the [Agent Skills](https://agentskills.io/) format and live under 
 | [`obi-links`](./skills/obi-links/SKILL.md) | Hyperlink entities, sandbox paths, and launched jobs |
 | [`obi-logbook`](./skills/obi-logbook/SKILL.md) | Scientific logbook convention for OBI workflows |
 | [`obi-sandbox-auth`](./skills/obi-sandbox-auth/SKILL.md) | Auth-manager token exchange and offline consent |
+| [`obi-sandbox-sizing`](./skills/obi-sandbox-sizing/SKILL.md) | Choosing the sandbox size and handling a sandbox that is still starting |
 | [`parameter-scan`](./skills/parameter-scan/SKILL.md) | Shared parameter-scan model behind every obi-one scan-config workflow |
 | [`single-cell-simulation-api`](./skills/single-cell-simulation-api/SKILL.md) | ME-model building and single-neuron simulation |
 | [`skeletonization-api`](./skills/skeletonization-api/SKILL.md) | Skeletonization campaigns via obi-one / EntityCore |
