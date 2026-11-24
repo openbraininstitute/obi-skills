@@ -36,7 +36,7 @@ curl -s -w '\nHTTP %{http_code}\n' -X POST \
 
 That `id` is **the UUID of the stored refresh token**, not a session identifier. It is the credential that matters for the rest of the session: hold onto it and feed it to `/v1/access-token` (Trigger 2) whenever you need a usable token. The endpoint exchanges your bearer token with Keycloak, stores the resulting refresh token in auth-manager's vault, and hands back this id.
 
-**If it instead returns `{"error":"Token is not active","code":"token_not_active"}`:** the sandbox's token has already expired. Call the `kill-sandbox` tool to tear down and recreate the sandbox — this issues a fresh `OBI_ACCESS_TOKEN` automatically — then retry the exchange once. Pass the same `vlab_id`/`project_id`/`sandbox_number` as the code that hit the error; if it refuses because kernels are busy, stop yours with `interrupt-kernel` first.
+**If it instead returns `{"error":"Token is not active","code":"token_not_active"}`:** the sandbox's token has already expired. Call the `kill-sandbox` tool to tear down and recreate the sandbox — this issues a fresh `OBI_ACCESS_TOKEN` automatically — then retry the exchange once. Pass the same `vlab_id`/`project_id`/`sandbox_number` as the code that hit the error; if it refuses because kernels are busy, stop yours with `interrupt-kernel` first (see [[obi-sandbox]]).
 
 ## Trigger 2 — Any time you need a usable access token
 

@@ -75,7 +75,7 @@ For amplitudes from 0.2 to 1.0 nA, append `&min_value=0.2&max_value=1.0`.
 
 Configure an `ElectrophysiologyMetricsScanConfig` and run its task via `obi_one` in the sandbox. Its `Initialize` block takes `trace_id`, `protocols`, `requested_metrics`, and `amplitude`. Pass lists to sweep over several traces or protocol sets — see [[parameter-scan]] (driven through `obi_one`, since this task is local-only).
 
-> A batch/scan over many traces can exceed the sandbox's ~30 s tool-call timeout — run it as a background process and poll, per the "Long-running work" section of [[virtual-lab-manager-api]].
+> A batch/scan over many traces can exceed the sandbox's ~30 s tool-call timeout — run it as a background process and poll, per the "Long-running work" section of [[obi-sandbox]].
 
 ## Protocol Reference (`protocols`)
 
