@@ -39,7 +39,7 @@ Do not write any of these into the logbook:
 
 - HTTP verbs, endpoint paths, status codes, request/response bodies, `curl` commands
 - Authentication: tokens, token exchange, refresh, consent URLs, `virtual-lab-id` / `project-id` headers, anything from [[obi-sandbox-auth]] — **never write a token or any part of one into the logbook**
-- Tool names, MCP connector names, sandbox lifecycle (kill/restart), polling loops, retries, timeouts
+- Tool names, MCP connector names, sandbox lifecycle (kill/restart), sandbox numbers and kernel names, polling loops, retries, timeouts
 - Bugs, workarounds, and error messages encountered along the way — those are session chatter, and the platform-level ones already live in the relevant skill's Known Issues section
 - Intermediate/scratch file paths and download plumbing (see [[chat-obi-sandbox-bridge]])
 

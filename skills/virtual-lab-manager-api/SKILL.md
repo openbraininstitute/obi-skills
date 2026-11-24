@@ -38,7 +38,7 @@ That last row is the one to take seriously. Under `recent-workspace` the default
 
 ## Targeting a different project
 
-Every sandbox tool — `execute-python`, `execute-shell`, `kill-sandbox`, `get-sandbox-download-url`, `get-sandbox-upload-url` — takes optional `vlab_id` and `project_id`.
+Every sandbox tool — `execute-python`, `execute-shell`, `list-sandboxes`, `kill-sandbox`, `list-kernels`, `interrupt-kernel`, `kill-kernel`, `get-sandbox-download-url`, `get-sandbox-upload-url` — takes optional `vlab_id` and `project_id`.
 
 Three rules:
 
@@ -52,7 +52,7 @@ Three rules:
 |---|---|---|
 | `/home/jovyan` (`~`) | **Per user — shared** | Your files, notebooks, and `pip install --user` packages in `~/.local` are visible from every project |
 | `/tmp` and the rest of the container filesystem | Per project | A file in `/tmp` under project A does not exist under project B |
-| Running kernel state (Python variables, imports, loaded data) | Per project | `execute-python` under B starts a fresh kernel; variables defined under A raise `NameError` |
+| Running kernel state (Python variables, imports, loaded data) | Per kernel (so also per project and per sandbox) | `execute-python` under B starts a fresh kernel; variables defined under A raise `NameError`. See "Sandboxes and kernels" below |
 | Packages installed into the container (`apt`, conda, plain `pip` into `/opt/conda`) | Per project | Reinstall, or install with `--user` so it lands in shared `~/.local` |
 | `/data/aws_s3_internal/private/{vlab}/{project}` | Per project | Only the **current** project's entity assets are mounted. Switching project makes A's assets invisible, so `entitysdk`'s local-store fast path falls back to network downloads |
 | `/data/aws_s3_open`, `/data/aws_s3_internal/public`, `/home/shared_data` | Global, read-only | Same everywhere |
@@ -67,6 +67,43 @@ For `get-sandbox-download-url` / `get-sandbox-upload-url`, pass the same ids you
 Every sandbox tool echoes a `workspace` block in its result showing which vlab/project it actually used and why. When the user cares where something ran, read it back from there rather than assuming.
 
 If a tool reports that no workspace could be determined, the user has no recent workspace and pinned no headers. Call `list-virtual-labs-and-projects`, ask which they want, and pass the ids explicitly.
+
+## Sandboxes and kernels within a project
+
+Inside one project, code runs at an address of up to three parts, all optional:
+
+| Argument | Selects | Default |
+|---|---|---|
+| `vlab_id` + `project_id` | the project, as above | the default workspace |
+| `sandbox_number` (0–31) | a sandbox: a separate pod (machine) of that project | the project's default sandbox |
+| `kernel` (`execute-python` / `execute-shell` only) | a kernel: a separate Python process inside that sandbox | `"default"` |
+
+A **sandbox** is a pod. Different `sandbox_number`s are different machines: own CPU and memory, own `/tmp`, own kernels, own size (`profile`), stopped independently. `~` is still shared, as for projects. Each one is billed while it runs, and at most **3 run at once per user and project, the default sandbox included**; a 4th fails with "Sandbox limit reached". Call `list-sandboxes` before picking a new number, and kill numbered sandboxes you no longer need.
+
+A **kernel** is one Python process inside a sandbox. Its variables, imports and loaded data persist between calls with the same `kernel` name, and different names never see each other's variables. Kernels in one sandbox share its CPU, memory and files; a new one starts in a second or two and costs nothing extra beyond the memory it uses. A shell command (`execute-shell`) runs through the kernel too, but each one in a fresh subshell — `cd`/`export` don't carry over to the next call, files and Python state do.
+
+Which to use:
+
+- **Normal, sequential work:** omit both. Everything runs in the default kernel of the default sandbox, and state persists as you'd expect.
+- **Parallel work that keeps its own state** (e.g. one kernel per sub-agent, or a long job while you keep working): give each strand its own `kernel` name in the same sandbox. Cheap and fast.
+- **Work that must not compete for memory/CPU, needs a different size, or must survive another strand being killed:** use a separate `sandbox_number`. Costs a cold start and a billed pod.
+
+A kernel runs one call at a time:
+
+- If the `"default"` kernel is busy (e.g. still running a call that timed out), a new call **runs in a temporary kernel** instead and the result says so in `note`. That call does **not** see the default kernel's variables; the temporary kernel is deleted afterwards. Nothing is interrupted.
+- If a **named** kernel is busy, the call fails with "Kernel … is still running an earlier call". Wait, use another name, or stop it with `interrupt-kernel`.
+- The `kernel` field of every result says where the code actually ran (`"temporary"` for the case above).
+
+Managing kernels:
+
+- `list-kernels` shows the kernels of a running sandbox with their state (`busy`/`idle`) and owner: `mcp` (created by these sandbox tools, yours to use — `kernel` is the name to pass to the other tools), `research-agent` (workers of a research run), or `other` (e.g. a notebook the user opened). It never starts a sandbox.
+- `interrupt-kernel` stops the code currently running in one of your kernels (like Ctrl+C); its variables are kept.
+- `kill-kernel` deletes one of your kernels and frees its memory; its variables are lost, files are kept, and the next call with that name starts fresh. Delete kernels you no longer need — idle ones still hold their memory until the sandbox stops.
+- Only your own (`mcp`) kernels can be interrupted or killed.
+
+**Killing a sandbox is the last resort.** `kill-sandbox` stops the pod with *every* kernel in it, including work from other conversations or clients, parallel sub-agents, or a research run sharing it. Prefer `interrupt-kernel` or `kill-kernel`; kill a sandbox only when it is broken, its token expired (see [[obi-sandbox-auth]]), or its size has to change. It refuses while the sandbox has busy or research-agent kernels — interrupt your own first, and pass `force: true` only after checking with the user. It never starts a sandbox that isn't running.
+
+For `get-sandbox-download-url` / `get-sandbox-upload-url`, pass the same `sandbox_number` as the call that wrote the file when the path is outside `~` (e.g. `/tmp`), just as for the project.
 
 ## Long-running work: the ~30 s tool-call timeout
 
@@ -98,10 +135,10 @@ The pattern:
 Things to keep in mind:
 
 - **The kernel and filesystem persist between calls**, so a backgrounded job survives the tool call that started it. `/home/jovyan` is the durable place to write (shared per user); `/tmp` is per-pod and can vanish on a cold start.
-- **A timed-out foreground call is not a failure to retry.** Re-issuing it starts a *second* run — over the same output paths — which for tasks with "output already exists" guards then errors confusingly. Inspect the log/output before doing anything again.
+- **A timed-out foreground call is not a failure to retry.** Its code keeps running and its kernel stays busy (`list-kernels` shows it): the next call to the default kernel runs in a temporary kernel without your variables, and a named kernel refuses until it is free. Re-issuing the work starts a *second* run — over the same output paths — which for tasks with "output already exists" guards then errors confusingly. Inspect the log/output first; stop the stray run with `interrupt-kernel` if needed.
 - **Keep the launching call itself short.** Do setup (writing the script, `pip install`, staging inputs) in their own quick calls; the call that starts the long job should do little more than `nohup … &`.
 - **Poll on a sensible cadence**, and surface progress from the log to the user rather than sitting silent. Consider having the script emit progress lines it can tail.
-- **Redirect state that needs the environment** (`OBI_VLAB_ID`, `OBI_PROJECT_ID`, tokens) is read at launch time; if you background a job in a redirected project, pass the same `vlab_id`/`project_id` on the launching call so it runs in the intended pod.
+- **Redirect state that needs the environment** (`OBI_VLAB_ID`, `OBI_PROJECT_ID`, tokens) is read at launch time; if you background a job in a redirected project, pass the same `vlab_id`/`project_id` (and `sandbox_number`) on the launching call so it runs in the intended pod.
 
 ## Passing the workspace to the other OBI APIs
 
