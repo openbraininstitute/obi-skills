@@ -144,7 +144,7 @@ lab_url:       https://{hub_host}/user/{username}/{server_id}/lab/tree/home/jovy
 
 The full path is kept, `home/jovyan` included — the Jupyter root is `/`. Keep the prefix for the session and append other paths to it; directory links work the same way (`…/lab/tree/home/jovyan/<topic>/plots/`) and are the compact way to hand over a folder of figures instead of bridging ten files.
 
-Two things to respect: `{server_id}` belongs to the current sandbox, so a link dies after `kill-sandbox` or an idle shutdown — mint it fresh rather than reusing one from an earlier turn. And `/hub/user-redirect/…` is **not** a shortcut here: it resolves to the user's default server, not the named server the sandbox runs as.
+Two things to respect: `{server_id}` belongs to the current sandbox, so a link dies after `kill-sandbox` or an idle shutdown — mint it fresh rather than reusing one from an earlier turn. Each numbered sandbox (`sandbox_number`) has its own `{server_id}`. And `/hub/user-redirect/…` is **not** a shortcut here: it resolves to the user's default server, not the named server the sandbox runs as.
 
 ## Key constraints to keep in mind
 

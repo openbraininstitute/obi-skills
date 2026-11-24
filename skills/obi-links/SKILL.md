@@ -95,7 +95,7 @@ It looks attractive because it drops the username and server id, but it **does n
 
 ### Notes
 
-- **The link is bound to the current sandbox instance.** `{server_id}` changes after `{obi}:kill-sandbox` or an idle shutdown, and links minted earlier stop working. Mint them fresh in the session you hand them out in; never copy one from an old transcript, and keep them out of `logbook.md`, which outlives the server (record the plain path there).
+- **The link is bound to the current sandbox instance.** `{server_id}` changes after `{obi}:kill-sandbox` or an idle shutdown, and links minted earlier stop working. Each numbered sandbox (`sandbox_number`) has its own `{server_id}`: mint the link with the same `sandbox_number` as the call that wrote the file. Mint them fresh in the session you hand them out in; never copy one from an old transcript, and keep them out of `logbook.md`, which outlives the server (record the plain path there).
 - **Link files under `/home/jovyan`** — the EFS-backed home where all work belongs (see [[obi-logbook]]). `/tmp` is addressable but vanishes with the container, so linking it is pointless.
 - **Directories work too** — `…/lab/tree/home/jovyan/<topic>/plots/` opens the folder in the file browser. Prefer one directory link over ten file links.
 - **The link opens for that user only**, when logged in. It is not shareable with a colleague.

@@ -69,7 +69,7 @@ config = ConnectivityMatrixExtractionScanConfig(
 
 The extraction loads the circuit, selects the edge population, and builds a `conntility` `ConnectivityMatrix` where the aggregation is **synapse count per connection** (`agg_func=len` over any edge property). It writes `connectivity_matrix.h5`.
 
-> Loading a large circuit and building its matrix easily exceeds the sandbox's ~30 s tool-call timeout — run it as a background process and poll, per the "Long-running work" section of [[virtual-lab-manager-api]]. The same applies to sweeps.
+> Loading a large circuit and building its matrix easily exceeds the sandbox's ~30 s tool-call timeout — run it as a background process and poll, per the "Long-running work" section of [[obi-sandbox]]. The same applies to sweeps.
 
 ## Field Reference
 
