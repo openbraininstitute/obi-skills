@@ -25,8 +25,10 @@ download media to bypass a blocked preview.
 ## OBI result → chat
 
 1. Write and verify the output on OBI under `/home/jovyan/<topic>/plots/` or
-   `results/`, and finalize `/home/jovyan/<topic>/logbook.md` there. Keep analysis
-   code under `code/`. Use OBI's execution tools for this work.
+   `results/`. Keep analysis code under `code/`. Use OBI's execution tools for
+   this work. The logbook is the project's research log, written with the
+   `logbook-*` tools (see [obi-logbook](../../obi-logbook/SKILL.md)); there is no
+   logbook file to transfer.
 2. Call `{obi}:get-sandbox-download-url` with the absolute path of one file.
    Fetch the bytes through its returned `fetch_url`. This ticket URL needs no
    Authorization header and expires after `expires_in_seconds` (currently 300).
