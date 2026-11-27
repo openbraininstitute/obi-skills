@@ -193,7 +193,7 @@ Every tool also takes `vlab_id` and `project_id`, both or neither: the project t
 | `logbook-open-folder` | `log_id`, `topic` (kebab-case, only for a log with no folder yet), `adopt` (default false) | `path`, `created`, `adopted`, `files` (each with `in_folder`) |
 | `logbook-list-pages` | `log_id` | `pages`: `id`, `kind` (`main` or `section`), `title`, `position` |
 | `logbook-create-page` | `log_id`, `title` | `page`, `already_exists` |
-| `logbook-read` | `log_id`, `page_id` (optional: the main page) | `page_id`, `blocks`: `id`, `type`, `rev`, `markdown` |
+| `logbook-read` | `log_id`, `page_id` (optional: the main page), `start` (optional: the `next_start` of the previous read) | `page_id`, `blocks`: `id`, `type`, `rev`, `markdown`; `total_blocks`; `next_start` (not null: the page goes on, read again with `start: next_start`) |
 | `logbook-add-entry` | `log_id`, `page_id` (optional), `markdown` | `page_id`, `blocks`, `already_sent` |
 | `logbook-edit` | `log_id`, `page_id` (optional), `ops`: 1 to 50 operations, see below | `page_id`, `blocks`, `already_sent` |
 | `logbook-save-file` | `log_id`, `path` (absolute, inside the topic directory) | `name` (the saved name), `size`, `already_saved`, `log_url` |
@@ -228,7 +228,9 @@ A tool that cannot do its work answers `{ "error": "…" }`, and the message say
 | `This research log has no page yet and you may only read it` | You may not write in this log. Tell the user. |
 | `The sandbox is still starting` | Call again in a minute. |
 | `Too large for one call` | Split the text into several calls. |
-| `The sandbox did not finish within 10 minutes` | Call again; if it times out again, tell the user. |
+| `The sandbox did not answer within 10 minutes` | The step may still finish there. Call again (it is safe); if it times out again, tell the user. |
+| `The storage address … is not https` | Nothing was sent. Tell the user: the platform gave a wrong upload or download address. |
+| `A copy can only go into the folder of this log` | Give a `path` inside the log's folder, or leave it out. |
 | `Unexpected failure: …` | `logbook-read` (or `logbook-list-files`) to see what was done, then call again once. If it fails again, tell the user. |
 
 ---
