@@ -138,7 +138,7 @@ A research log belongs to one project, and its files may be written only from th
 
 A saved file stays in the sandbox too: saving is a copy. `logbook-open-folder` lists the files the research log saved and marks those missing from the folder (`in_folder: false`), for example a colleague's files or a cleaned folder.
 
-- Fetch only the files the task needs, with `logbook-fetch-file` and the saved name. Without a `path`, the copy goes to its name in the folder (`plots/rate.3fa9c1d2e4b7.png` goes to `<topic_dir>/plots/rate.png`).
+- Fetch only the files the task needs, with `logbook-fetch-file` and the saved name. Without a `path`, the copy goes to its name in the folder (`plots/rate.3fa9c1d2e4b7.png` goes to `<topic_dir>/plots/rate.png`). A `path` must be inside `<topic_dir>`.
 - Fetch everything only when the user asks for it.
 - A file saved several times has one saved name per version; `newest` marks the latest. Fetch an older version by its full saved name, to another `path` if the newest is already there.
 
@@ -198,7 +198,7 @@ Every tool also takes `vlab_id` and `project_id`, both or neither: the project t
 | `logbook-edit` | `log_id`, `page_id` (optional), `ops`: 1 to 50 operations, see below | `page_id`, `blocks`, `already_sent` |
 | `logbook-save-file` | `log_id`, `path` (absolute, inside the topic directory) | `name` (the saved name), `size`, `already_saved`, `log_url` |
 | `logbook-list-files` | `log_id` | `files`: `name`, `local_name`, `newest`, `size`, `last_modified` |
-| `logbook-fetch-file` | `log_id`, `name` (a saved name), `path` (optional: absolute target in the sandbox) | `name`, `path`, `size` |
+| `logbook-fetch-file` | `log_id`, `name` (a saved name), `path` (optional: absolute target inside the log's folder) | `name`, `path`, `size` |
 
 The `ops` of `logbook-edit`, applied in order, all or none:
 
