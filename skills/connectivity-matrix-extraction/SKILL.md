@@ -103,7 +103,6 @@ The extraction loads the circuit, selects the edge population, and builds a `con
 
 ```
 /home/jovyan/<topic>/
-├── logbook.md
 ├── results/            ← connectivity_matrix.h5 (one subdir per run / parameter setting)
 ├── plots/              ← adjacency plots, degree distributions, connectivity summaries
 └── code/               ← the extraction + analysis scripts

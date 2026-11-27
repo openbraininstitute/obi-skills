@@ -425,7 +425,6 @@ When this runs on the OBI sandbox, all files go under the conversation's topic d
 
 ```
 /home/jovyan/<topic>/
-├── logbook.md
 ├── circuit-original/   ← the downloaded circuit, unmodified
 ├── circuit-modified/   ← the modified copy (+ modifications.json sidecar)
 ├── results/            ← spikes.h5, soma_voltage.h5; one subdir per condition
@@ -433,7 +432,7 @@ When this runs on the OBI sandbox, all files go under the conversation's topic d
 └── code/
 ```
 
-`logbook.md`, `results/`, `plots/`, and `code/` are fixed by [[obi-logbook]]; the circuit directories are this workflow's inputs. **Keep `circuit-original/` untouched** — modify a copy, never the download, so the baseline stays reproducible and the diff stays inspectable.
+`results/`, `plots/`, and `code/` are fixed by [[obi-logbook]]; the circuit directories are this workflow's inputs. **Keep `circuit-original/` untouched** — modify a copy, never the download, so the baseline stays reproducible and the diff stays inspectable.
 
 ## Logbook
 

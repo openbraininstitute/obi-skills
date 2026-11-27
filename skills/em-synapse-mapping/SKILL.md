@@ -144,7 +144,6 @@ The generate endpoint returns the campaign ID; estimate/launch need the child co
 
 ```
 /home/jovyan/<topic>/
-├── logbook.md
 ├── models/             ← the morphologies / ME-models pulled from EntityCore
 ├── results/            ← mapped circuit(s); one subdir per neuron set
 ├── plots/              ← synapse-location overlays on morphologies

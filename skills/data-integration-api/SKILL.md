@@ -483,7 +483,6 @@ When ingestion runs from the sandbox, all files go under the conversation's topi
 
 ```
 /home/jovyan/<topic>/
-├── logbook.md
 ├── source/             ← the files as received, untouched
 ├── converted/          ← validated/converted formats returned by obi-one
 ├── results/            ← metrics, validation reports
@@ -491,7 +490,7 @@ When ingestion runs from the sandbox, all files go under the conversation's topi
 └── code/
 ```
 
-`logbook.md`, `results/`, `plots/`, and `code/` are fixed by [[obi-logbook]]. **Keep `source/` pristine** — never overwrite the received files with converted ones; provenance depends on being able to go back to exactly what was handed over.
+`results/`, `plots/`, and `code/` are fixed by [[obi-logbook]]. **Keep `source/` pristine** — never overwrite the received files with converted ones; provenance depends on being able to go back to exactly what was handed over.
 
 ## Logbook
 
